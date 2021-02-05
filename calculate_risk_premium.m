@@ -11,10 +11,3 @@ M.rp_I = mean([A.mrp(1) A.mrp(2)]) + M.rp_dune/X.mdh(t)^.05;
 
 
 
-
-
-for hdune=1:7
-    
-    rp16(hdune)  = -0.16 + M.rp_dune/hdune^.05;
-    rp15(hdune)  = -0.15 + M.rp_dune/hdune^.05;
-end
