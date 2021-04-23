@@ -1,0 +1,156 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%         Coastal Home Ownership Model CHOM         %%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+cd C:\Users\Zack\Dropbox\coastal_housing\coastal_housing\8_April_2021\model_ver1
+
+clear all; close all; format compact;
+rand('state',2); randn('state',2);
+t1 = 2; % use as plot start time
+
+n                   = 2500;                                           % total number of agents
+[M,MMT,ACOM]        = model_initialize(n);                            % initialize
+[A_NOF,X_NOF]       = agent_initialize(M.T,ACOM.n_NOF,MMT.bta_NOF);   % initialize
+[A_OF,X_OF]         = agent_initialize(M.T,ACOM.n_OF,MMT.bta_OF);     %
+SV_NOF              = [];
+SV_OF               = [];
+t2                  = 100;
+
+for t = 2 : t2% M.Tfinal;
+    t
+
+    n1                       = round(ACOM.n_NOF*(1-X_NOF.mkt(t-1)));                     % update market share = number of renters, 1-mkt = number renters
+    n2                       = round(ACOM.n_OF*(1-X_OF.mkt(t-1)));
+    ACOM.I_own               = 0*ACOM.I_own;
+    
+    
+    ACOM.I_own(1:n1)         = 1;
+    ACOM.I_own(end-n2+1:end) = 1;
+    
+    M.time                   = t;                                                            %  store current time to pass into functions
+    [MMT,ACOM]               = evolve_environment(ACOM,M,MMT);  
+    % evolve, erode, build dunes, storms, calculate erosion rates
+    [ACOM]                   = calculate_expected_dune_height(ACOM,M,MMT);
+    [X_NOF]                  = calculate_risk_premium(ACOM,A_NOF,M,X_NOF,MMT);
+    [X_OF]                   = calculate_risk_premium(ACOM,A_OF,M,X_OF,MMT);
+    [BPC]                    = calculate_nourishment_plan_cost(ACOM,M,MMT,X_NOF,X_OF);
+    [BPB,BPC]                = calculate_nourishment_plan_ben(A_NOF,A_OF,ACOM,BPC,M,MMT,X_NOF,X_OF);
+    [A_NOF,A_OF,MMT]         = evaluate_nourishment_plans(A_NOF,A_OF,ACOM,BPB,BPC,M,MMT,X_NOF,X_OF);
+    [ACOM,X_NOF,X_OF]        = calculate_expected_beach_width(ACOM,M,MMT,X_NOF,X_OF);
+  
+    if t>5
+        [A_NOF,A_OF,MMT]     = calculate_evaluate_dunes(ACOM,M,MMT,X_NOF,X_OF,A_NOF,A_OF);   % evaluate building a dune (cost, benefits, taxes), and if yes then builddunetime(t+1)=1 and update prop taxes
+        [X_NOF,SV_NOF]       = expected_capital_gains(ACOM,A_NOF,M,MMT,X_NOF,0,SV_NOF,M.P_e_NOF,ACOM.n_NOF);
+        [X_OF,SV_OF]         = expected_capital_gains(ACOM,A_OF,M,MMT,X_OF,1,SV_OF,M.P_e_OF,ACOM.n_OF);
+    end
+    
+    [X_NOF]                  = calculate_user_cost(M,X_NOF,X_NOF.WTP{t},A_NOF.tau_prop(t));         % real estate market calculation - determine current price, rent, and investor market share
+    [X_OF]                   = calculate_user_cost(M,X_OF,X_OF.WTP{t},A_OF.tau_prop(t));            % real estate market calculation - determine current price, rent, and investor market share
+    [A_NOF,X_NOF,SV_NOF]     = agent_distribution_adjust(ACOM,A_NOF,X_NOF,M,SV_NOF,0,MMT);
+    [A_OF,X_OF,SV_OF]        = agent_distribution_adjust(ACOM,A_OF,X_OF,M,SV_OF,1,MMT);
+    
+%     if numel(find(abs(X_OF.g_o>0.2)))>0
+%         1
+%         return
+%     end
+    save_dynamic_var;   % save stuff for analysis
+      
+end
+
+print_figures
+
+
+% analysis type plots
+plot(SV_OF.W(t1:t2),X_OF.price(t1:t2),'k.')
+
+
+% 
+% 
+% factor_external=1;
+% close all
+% 
+% Price=linspace(4e5,5e5,100);
+% P_e=5e5;
+% a=2; b=10;
+% theta=1;
+% gamma=1;
+% nu=1e-8;
+% 
+% for ii=2:length(Price)
+%     
+%     vu=100/(P_e^2);
+%     vl=vu;
+%     cl=10000/(P_e^3); % making smaller increases feedback at small differences
+%     cu=cl;
+%     
+%         if Price(ii-1)<P_e
+%             nu=vl-cl*(Price(ii-1)-P_e);
+%         else
+%             nu=vu+cu*(Price(ii-1)-P_e);
+%         end
+%     %
+%     w         = 1/(1+nu*(Price(ii)-P_e).^2);
+%     y2        = -(b-a)*w+b;
+%     y1        = (b-a)*w+a;
+%     f         = betarnd(y1,y2,n,1);
+%     %  f         = betarnd(10,10,n,1);
+%     
+%     %         f=f/std(f); f=f-mean(f);
+%     %         f=f*0.01;
+%     %         f=f+w;
+%     wstore(ii)=w;
+%     y1store(ii)=y1;
+%     y2store(ii)=y2;
+%     nustore(ii)=nu;
+%     %     f=1-f;  % quadruple check this to make this all makes sense
+%     Pe_tplus1(:,ii) = f*(Price(ii-1)+gamma*(Price(ii-1)-P_e))+(1-f)*(Price(ii-1)+theta*(P_e-Price(ii-1)));
+%     Pe_tplus1W(ii) = w*(Price(ii-1)+gamma*(Price(ii-1)-P_e))+(1-w)*(Price(ii-1)+theta*(P_e-Price(ii-1)));
+%     
+%     %     Pe_tplus1(:,ii) = Price(ii-1) + theta*(P_e-Price(ii-1))+(gamma+theta)*(1-f)*(Price(ii-1)-P_e);
+%     Eg_bubbly(:,ii) = factor_external*(Pe_tplus1(:,ii)-Price(ii-1))/Price(ii-1);
+%     
+% end
+% 
+% % plot(Price,wstore)
+% % plot(Price,y1store)
+% % hold on
+% % plot(Price,y2store)
+% 
+% 
+% close all
+% 
+% for ii=1:length(Price)
+%     100*ii/length(Price)
+% %         [F,XI]=ksdensity(Pe_tplus1(:,ii)-Price(ii));
+%     %     plot(XI,F)
+%     
+%     [F,XI]=ksdensity(Eg_bubbly(:,ii));
+%     subplot(121)
+%     plot(XI,F)
+%     xlim([-1 1])
+%     ylim([0 100])
+%     
+%     subplot(122)
+%     plot([1 100],[P_e P_e])
+%     hold on
+%     plot([1:100],Price)
+%     plot(ii,Price(ii),'ro','markersize',10)
+%     hold off
+%     pause
+%     
+% end
+% 
+% w=linspace(0,1,100);
+% 
+% for ii=1:length(w)
+% y1(ii)        = -18*w(ii)+20;
+% y2(ii)        = 18*w(ii)+2;
+% end
+% plot(w,y1)
+% hold on
+% plot(w,y2)
+% 
+% 
+% 
