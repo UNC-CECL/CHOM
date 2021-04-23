@@ -1,12 +1,12 @@
-function [X]=calculate_expected_dune_height(X)
+function [ACOM]=calculate_expected_dune_height(ACOM,M,MMT)
 
-t = X.time;
+t = M.time;
 
 % should pass in a control on backward time depth
-if t>10
-    X.mdh(t) = mean(X.h_dune(t-9:t));
+if t>29
+    ACOM.Edh(t) = mean(MMT.h_dune(t-29:t));
 else
-    X.mdh(t) = mean(X.h_dune(1:t));
+    ACOM.Edh(t) = mean(MMT.h_dune(1:t));
 end
 
 

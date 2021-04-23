@@ -1,36 +1,61 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%         Coastal Home Ownership Model CHOM         %%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%         Coastal Home Ownership Model CHOM         %%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-cd C:\Users\Zack\Dropbox\ECONCOAST\model_2_2_2021\'New folder'\
+cd C:\Users\Zack\Dropbox\coastal_housing\coastal_housing\8_April_2021\model_ver1
+
 clear all; close all; format compact;
-rand('state',1); randn('state',1);
-t1 = 5; % use as plot start time
+rand('state',2); randn('state',2);
+t1 = 2; % use as plot start time
 
-[E,M,X,A,F,Tfinal]   = model_initialize;                          
+n                   = 2500;                                           % total number of agents
+[M,MMT,ACOM]        = model_initialize(n);                            % initialize
+[A_NOF,X_NOF]       = agent_initialize(M.T,ACOM.n_NOF,MMT.bta_NOF);   % initialize
+[A_OF,X_OF]         = agent_initialize(M.T,ACOM.n_OF,MMT.bta_OF);      
+SV_NOF              = [];
+SV_OF               = [];
+t2                  = 150;
 
-for t = 2 : Tfinal; t
+nourishment_off     = 0;
+
+for t = 2 : t2
+    t
     
-    X.time = t;                                                   % store current time to pass into functions
-    [X]    = evolve_environment(F,X,A,E,M);                       % evolve, erode, build dunes, storms, calculate erosion rates
-    [X]    = calculate_expected_dune_height(X);                   % update agent dune height expectations then
-    [M]    = calculate_risk_premium(A,M,X);                       % update agent risk premium
-    [BP]   = evaluate_nourishment_plan(E,M,X);                    % build menu of nourishment interval options - costs, benefits, property taxes, and
-    [BP,X] = choose_nourishment_plan(E,M,X,BP);                   % evaluate nourishment menu - and if choosing to nourish (i.e. nourishtime(t+1)=1), then update prop taxes
-    [X]    = calculate_expected_beach_width(X,M);                 % update agent willingness to pay function
-    [X]    = evaluate_choose_dune_plan(E,M,X,A);                  % evaluate building a dune (cost, benefits, taxes), and if yes then builddunetime(t+1)=1 and update prop taxes
-    [X]    = calculate_user_cost(M,X,X.WTP(:,t),X.tau_prop(t+1)); % real estate market calculation - determine current price, rent, and investor market share
-    % [M,X] = agent_func(M,X);                                    % working on - evolve agent pool
-    % []    = property_tracking(M,X);                             % working on - space
-    save_dynamic_var;                                             % save stuff for analysis
-
-    % debug 
-    if X.newplan(t)==1 & isinf(X.planbenefit_beach(t))==1
-        disp('debug')
-        return
+    % update market share = number of renters, 1-mkt = number renters
+    n1                       = round(ACOM.n_NOF*(1-X_NOF.mkt(t-1)));                    
+    n2                       = round(ACOM.n_OF*(1-X_OF.mkt(t-1)));
+    
+    ACOM.I_own               = 0*ACOM.I_own;    
+    rand_ownNOF = randi([1 ACOM.n_NOF],n1,1);
+    rand_ownOF  = randi([ACOM.n_NOF+1 ACOM.n_NOF+ACOM.n_OF],n2,1);
+    ACOM.I_own(rand_ownNOF) = 1;
+    ACOM.I_own(rand_ownOF) = 1;
+    
+    M.time                   = t;                                         
+    [MMT,ACOM]               = evolve_environment(ACOM,M,MMT);  
+    [ACOM]                   = calculate_expected_dune_height(ACOM,M,MMT);
+    [X_NOF]                  = calculate_risk_premium(ACOM,A_NOF,M,X_NOF,MMT);
+    [X_OF]                   = calculate_risk_premium(ACOM,A_OF,M,X_OF,MMT);
+    [BPC]                    = calculate_nourishment_plan_cost(ACOM,M,MMT,X_NOF,X_OF);
+    [BPB,BPC]                = calculate_nourishment_plan_ben(A_NOF,A_OF,ACOM,BPC,M,MMT,X_NOF,X_OF);
+    [A_NOF,A_OF,MMT]         = evaluate_nourishment_plans(A_NOF,A_OF,ACOM,BPB,BPC,M,MMT,X_NOF,X_OF,nourishment_off);
+    [ACOM,X_NOF,X_OF]        = calculate_expected_beach_width(ACOM,M,MMT,X_NOF,X_OF);
+  
+    if t>5
+        [A_NOF,A_OF,MMT]     = calculate_evaluate_dunes(ACOM,M,MMT,X_NOF,X_OF,A_NOF,A_OF); 
+        [X_NOF,SV_NOF]       = expected_capital_gains(ACOM,A_NOF,M,MMT,X_NOF,0,SV_NOF,M.P_e_NOF,ACOM.n_NOF);
+        [X_OF,SV_OF]         = expected_capital_gains(ACOM,A_OF,M,MMT,X_OF,1,SV_OF,M.P_e_OF,ACOM.n_OF);
     end
+    
+    [X_NOF]                  = calculate_user_cost(M,X_NOF,X_NOF.WTP{t},A_NOF.tau_prop(t));         
+    [X_OF]                   = calculate_user_cost(M,X_OF,X_OF.WTP{t},A_OF.tau_prop(t));           
+    [A_NOF,X_NOF,SV_NOF]     = agent_distribution_adjust(ACOM,A_NOF,X_NOF,M,SV_NOF,0,MMT);
+    [A_OF,X_OF,SV_OF]        = agent_distribution_adjust(ACOM,A_OF,X_OF,M,SV_OF,1,MMT);
+    
+    save_dynamic_var;   % save stuff for analysis
+      
 end
 
 print_figures

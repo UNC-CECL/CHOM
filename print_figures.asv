@@ -151,18 +151,18 @@ hold on
 plot(t1:t2,SV_OF.beta_x(t1:t2),'color',rgb('cerulean'),'linewidth',1.5)
 xlim([t1 t2]); xlabel('time')
 ylabel('x_{\beta}')
+ 
 
 subplot(3,5,15)
-m1=mean(X_NOF.Ouc(:,t1:t2),1)';
-s1=std(X_NOF.Ouc(:,t1:t2));
-m2=mean(X_OF.Ouc(:,t1:t2),1)';
-s2=std(X_OF.Ouc(:,t1:t2));
+m1=mean(X_NOF.Ouc(t1:t2,:),2)';
+s1=std(X_NOF.Ouc(t1:t2,:)');
+m2=mean(X_OF.Ouc(t1:t2,:),2)';
+s2=std(X_OF.Ouc(t1:t2,:)');
 boundedline([t1:t2], [m1], s1, 'alpha','cmap', rgb('cerise'));
-hold on
 boundedline([t1:t2], [m2], s2, 'alpha','cmap', rgb('cerulean'));
 hold on
-% plot(t1:t2,X_NOF.rent(t1:t2)./X_NOF.price(t1:t2),'color',rgb('cerise'),'linewidth',2)
-% plot(t1:t2,X_OF.rent(t1:t2)./X_OF.price(t1:t2),'color',rgb('cerulean'),'linewidth',2)
+plot(t1:t2,X_NOF.rent(t1:t2)./X_NOF.price(t1:t2),'color',rgb('cerise'),'linewidth',2)
+plot(t1:t2,X_OF.price(t1:t2)./X_OF.rent(t1:t2),'color',rgb('cerulean'),'linewidth',2)
 ylabel('user cost')
 figure(2)
 

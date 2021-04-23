@@ -1,17 +1,29 @@
 % store for analysis
-X.oUC(t)         = mean((M.delta+X.tau_prop(t)).*(1-mean(M.tau_o))+ M.gam + M.rp_o-M.g_o);
-X.iUC(t)         = ((M.delta+X.tau_prop(t))*(1-M.tau_c)+ M.gam +M.rp_I-M.g_I);
-X.mRP(t)         = mean(M.rp_o);
-X.sRP(t)         = std(M.rp_o);
-X.meantau(t)     = mean(M.tau_o);
-X.stdtau(t)      = std(M.tau_o);
-
-if X.nourishtime(t+1)==1
-    X.planbenefit_beach(t) = BP.ben_min_taxburden(BP.beach_plan);
-else
-    X.planbenefit_beach(t) = max(BP.ben_min_taxburden(1:10));
-end
 
 
+SV.beach_plan(t) = MMT.current_plan;
 
+SV_NOF.meanAWTP_alph(t) = mean(X_NOF.WTP_alph);
+SV_NOF.meanAWTP_base(t) = mean(X_NOF.WTP_base);
+SV_NOF.meanAtauo(t)     = mean(X_NOF.tau_o);
+SV_NOF.meanArp(t)       = mean(X_NOF.rp_o);
+SV_NOF.tau_inc{t}       = X_NOF.tau_o;
 
+SV_OF.meanAWTP_alph(t) = mean(X_OF.WTP_alph);
+SV_OF.meanAWTP_base(t) = mean(X_OF.WTP_base);
+SV_OF.meanAtauo(t)     = mean(X_OF.tau_o);
+SV_OF.meanArp(t)       = mean(X_OF.rp_o);
+SV_OF.tau_inc{t}       = X_OF.tau_o;
+
+SV_NOF.g_o(t,:)=X_NOF.g_o;
+SV_NOF.g_I(t)=X_NOF.g_I;
+SV_OF.g_o(t,:)=X_OF.g_o;
+SV_OF.g_I(t)=X_OF.g_I;
+
+SV_NOF.rp_o(t,:)= (X_NOF.rp_o);
+SV_OF.rp_o(t,:)= (X_OF.rp_o);
+SV_NOF.rp_I(t)= (X_NOF.rp_I);
+SV_OF.rp_I(t)= (X_OF.rp_I);
+
+SV_OF.beta_x(t)=A_OF.beta_x;
+SV_NOF.beta_x(t)=A_NOF.beta_x;
