@@ -6,6 +6,7 @@ beta_min = 2;
 
 bline2   = -(beta_max-beta_min)*beta_x+beta_max;
 bline1   =  (beta_max-beta_min)*beta_x+beta_min;
+
 % bline2   = -beta_x+(beta_max+beta_min);
 % bline1   =  beta_x;
 % covariances 

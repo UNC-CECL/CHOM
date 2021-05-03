@@ -53,13 +53,11 @@ end
 I_realist=zeros(length(rp_base),1);
 I_realist(I(end-round(length(rp_base)*frac_realist)+1:end))=1;
 
-
 g_I               = 0.01;
 g_o               = 0.04*randn(n,1);
 price             = zeros(T,1);
 rent              = zeros(T,1);
 mkt               = zeros(T,1);
-t_halftime        = zeros(T,2);
 
 if bta>=0.2
     price(1)          = 6e5;

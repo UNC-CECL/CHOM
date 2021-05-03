@@ -36,8 +36,6 @@ class Chome:
         sand_cost=10,
         total_time=400,
         taxratio_oceanfront=3,
-        willingness_to_pay_min=1000,
-        willingness_to_pay_max=2000,
     ):
         """Coastal Home Ownership Model CHOM
         Parameters
@@ -125,7 +123,6 @@ class Chome:
         # dependent variables: owner-agent
         ###############################################################################
 
-        self._mWTP = [willingness_to_pay_min, willingness_to_pay_max]
         self._P_e_OF = external_housing_market_value_oceanfront + np.zeros(self._T)
         self._P_e_NOF = external_housing_market_value_nonoceanfront + np.zeros(self._T)
         self._n_NOF = round(self._n * (1 - self._share_OF))

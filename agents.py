@@ -35,10 +35,9 @@ def agent_distribution(
 
     bline2 = -1 * (beta_max - beta_min) * beta_x + beta_max
     bline1 = (beta_max - beta_min) * beta_x + beta_min
-    # bline2   = -beta_x+(beta_max+beta_min);
-    # bline1   =  beta_x;
 
     # covariances (KA: are these linear correlation parameters?)
+    #              ZW: yep
     r12 = rcov
     r13 = rcov
     r14 = rcov
@@ -51,6 +50,8 @@ def agent_distribution(
     )
     # U = copularnd('Gaussian', Rho, n);
     #  gaussian copula is based on the Gaussian Multivariate distribution
+    # ZW - I'm looking into this - matlab gives a different output from "copularnd" (confined to interval 0 to 1)
+    #     since np.random.multivariate_normal produces values outside [0 1], the result is beta.ppf produces NaN for vals outside this range
     size = Rho.shape[0]
     means = np.zeros(size)
     U = np.random.multivariate_normal(means, Rho, size=n)
@@ -96,7 +97,7 @@ class Agents:
         n=2500,
         bta=0.2,
         m=0.003,  # which of these will be tuned for locations? keep here, otherwise, move below
-        delta=0.06,
+        delta=0.06, # ZW: they won't all need to be upfront, but for initial model coupling I'll likely have to adjust some quite a bit, so lets keep them together for the time being
         gam=0.01,
         HV=1000,
         rp_storm=0,
@@ -121,7 +122,7 @@ class Agents:
         Parameters
         ----------
         bta: float, optional
-            DESCRIPTION GOES HERE
+            Hedonic beach width coefficient for oceanfront housing
         m: float, optional
             Additional investor-only fees of renting the propoerty (just investors)
         delta: float, optional
@@ -131,23 +132,23 @@ class Agents:
         HV: int, optional
             Annualized value of housing services (same for investor and owner)
         rp_storm: int, optional
-            NEED DESCRIPTION
+            Coefficient to convert storm return interval to risk premium
         epsilon: int, optional
             Additional bid for investor
         tau_c: float, optional
             Corporate tax rate (just investors) -- U.S. federal rate (could add 2.5# for NC)
         capgain_feedbackparam: float, optional
-            NEED DESCRIPTION
+            Feedback parameter for expected capital gains
         beta_x_feedbackparam: int, optional
-            NEED DESCRIPTION
+            Feedback parameter for agent distribution fluxes, reacts to outside market price
         adjust_beta_x: int, optional
-            NEED DESCRIPTION
+            Increment to adjust beta_x (agent distribution fluxes)
         risk_to_EnvExptdGains: int, optional
-            NEED DESCRIPTION
+            Coefficient converting risk premium to an expected capital loss (applies only to I_realist=1)
         frac_realist: int, optional
-            NEED DESCRIPTION
+            Total fraction of agents who consider internal system dyanmics to inform risk premia, and expected cap gains
         rcov: int, optional
-            NEED DESCRIPTION
+            Covariance between agent income tax bracket, willingness to pay, and risk tolerance
         env_risk_immediacy: int, optional
             Determines how quickly people switch from abitrage to environmental risk in capital gains
         """
@@ -224,14 +225,12 @@ class Agents:
         self._I_realist = np.zeros(len(self._rp_base))
         self._I_realist[
             self._I[-1 - round(len(self._rp_base) * self._frac_realist) + 1 : -1]
-        ] = 1  # KA -- make sure this matches matlab re: indices
-
+        ] = 1  # KA -- make sure this matches matlab re: indices (ZW -- this is correct)
         self._g_I = 0.01
         self._g_o = 0.04 * RNG.standard_normal(self._n)  # randn(n,1)
         self._price = np.zeros(self._T)
         self._rent = np.zeros(self._T)
         self._mkt = np.zeros(self._T)
-        self._t_halftime = np.zeros(self._T)
 
         if self._bta >= 0.2:
             self._price[0] = 6e5
