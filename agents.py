@@ -17,7 +17,10 @@ Notes
 """
 
 import numpy as np
+from copulas.multivariate import GaussianMultivariate
 from scipy.stats import beta
+from scipy.stats import norm  # contains PDF of Gaussian
+from scipy.stats import multivariate_normal
 
 
 def agent_distribution(
@@ -30,6 +33,9 @@ def agent_distribution(
     n,
 ):
     # beta distribution max/min parameter values
+    # dist = GaussianMultivariate()
+    # sampled = dist.sample(1000)
+
     beta_max = 10.5
     beta_min = 2
 
@@ -54,7 +60,9 @@ def agent_distribution(
     #     since np.random.multivariate_normal produces values outside [0 1], the result is beta.ppf produces NaN for vals outside this range
     size = Rho.shape[0]
     means = np.zeros(size)
-    U = np.random.multivariate_normal(means, Rho, size=n)
+    y = multivariate_normal(means, Rho)  # , size=n)
+    mvnData = y.rvs(size=n)
+    U = norm.cdf(mvnData)
 
     # X = [betainv(U(:, 1), bline1, bline2) betainv(U(:, 2), bline1, bline2) betainv(U(:, 3), bline1, bline2) betainv(
     #     U(:, 4), bline1, bline2)];
@@ -97,7 +105,7 @@ class Agents:
         n=2500,
         bta=0.2,
         m=0.003,  # which of these will be tuned for locations? keep here, otherwise, move below
-        delta=0.06, # ZW: they won't all need to be upfront, but for initial model coupling I'll likely have to adjust some quite a bit, so lets keep them together for the time being
+        delta=0.06,  # ZW: they won't all need to be upfront, but for initial model coupling I'll likely have to adjust some quite a bit, so lets keep them together for the time being
         gam=0.01,
         HV=1000,
         rp_storm=0,
