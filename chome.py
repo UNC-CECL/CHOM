@@ -1,11 +1,12 @@
 import numpy as np
-import scipy.constants
-import yaml
-from numpy.lib.scimath import power as cpower, sqrt as csqrt
-from scipy.interpolate import interp1d
-from scipy.sparse import csr_matrix
-from scipy.sparse.linalg import spsolve
+
 from agents import Agents
+from nourishment import (
+    calculate_nourishment_plan_cost,
+    calculate_nourishment_plan_ben,
+    evaluate_nourishment_plans,
+    calculate_evaluate_dunes,
+)
 
 
 class Chome:
@@ -178,13 +179,12 @@ class Chome:
 
         self._nourishment_off = 0
 
-
     def update(self):
         """Update Chome by a single time step"""
 
         # update market share = number of renters, 1-mkt = number renters
-        n1 = round(self._n_NOF * (1 - self._agents_back_row.mkt(self._time_index - 1)))
-        n2 = round(self._n_OF * (1 - self._agents_front_row.mkt(self._time_index - 1)))
+        n1 = round(self._n_NOF * (1 - self._agents_back_row.mkt[self._time_index - 1]))
+        n2 = round(self._n_OF * (1 - self._agents_front_row.mkt[self._time_index - 1]))
 
         self._I_own = 0 * self._I_own
         # rand_ownNOF = randi([1 ACOM.n_NOF], n1, 1)
@@ -197,14 +197,22 @@ class Chome:
         # [ACOM] = calculate_expected_dune_height(ACOM, M, MMT)
         # [X_NOF] = calculate_risk_premium(ACOM, A_NOF, M, X_NOF, MMT)
         # [X_OF] = calculate_risk_premium(ACOM, A_OF, M, X_OF, MMT)
-        # [BPC] = calculate_nourishment_plan_cost(ACOM, M, MMT, X_NOF, X_OF)
-        # [BPB, BPC] = calculate_nourishment_plan_ben(A_NOF, A_OF, ACOM, BPC, M, MMT, X_NOF, X_OF)
-        # [A_NOF, A_OF, MMT] = evaluate_nourishment_plans(A_NOF, A_OF, ACOM, BPB, BPC, M, MMT, X_NOF, X_OF,
-        #                                                 nourishment_off)
+        BPC = calculate_nourishment_plan_cost(
+            self, self._agents_back_row, self._agents_front_row
+        )
+        [BPB, BPC] = calculate_nourishment_plan_ben(
+            self, self._agents_back_row, self._agents_front_row, BPC
+        )
+        MMT = evaluate_nourishment_plans(
+            self, self._agents_back_row, self._agents_front_row, BPB, BPC
+        )
         # [ACOM, X_NOF, X_OF] = calculate_expected_beach_width(ACOM, M, MMT, X_NOF, X_OF)
-        #
+
         # if t > 5:
-        #     [A_NOF, A_OF, MMT] = calculate_evaluate_dunes(ACOM, M, MMT, X_NOF, X_OF, A_NOF, A_OF)
+        if self._time_index > 4:
+            MMT = calculate_evaluate_dunes(
+                self, self._agents_back_row, self._agents_front_row, MMT
+            )
         #     [X_NOF, SV_NOF] = expected_capital_gains(ACOM, A_NOF, M, MMT, X_NOF, 0, SV_NOF, M.P_e_NOF, ACOM.n_NOF)
         #     [X_OF, SV_OF] = expected_capital_gains(ACOM, A_OF, M, MMT, X_OF, 1, SV_OF, M.P_e_OF, ACOM.n_OF)
         #
