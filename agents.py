@@ -105,7 +105,8 @@ class Agents:
         n=2500,
         bta=0.2,
         m=0.003,  # which of these will be tuned for locations? keep here, otherwise, move below
-        delta=0.06,  # ZW: they won't all need to be upfront, but for initial model coupling I'll likely have to adjust some quite a bit, so lets keep them together for the time being
+        delta=0.06,
+        # ZW: they won't all need to be upfront, but for initial model coupling I'll likely have to adjust some quite a bit, so lets keep them together for the time being
         gam=0.01,
         HV=1000,
         rp_storm=0,
@@ -247,3 +248,7 @@ class Agents:
             self._price[0] = 4e5
             self._rent[0] = 1e5
         self._mkt[0] = 0.4
+
+    @property
+    def mkt(self):
+        return self._mkt
