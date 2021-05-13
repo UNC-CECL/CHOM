@@ -1,0 +1,151 @@
+function [X,SV] = expected_capital_gains(ACOM,A,M,MMT,X,OF,SV,P_e,n);
+
+X   = X_OF;
+A   = A_OF;
+OF  = 1;
+P_e = M.P_e_OF;
+
+t   = M.time;
+
+% bubbly component
+capgain_feedbackparam = A.capgain_feedbackparam;
+risk_to_EnvExptdGains = A.risk_to_EnvExptdGains;
+theta     = 0.125;
+gamma     = 0.125;
+a = 2; b = 10;
+Price     = mean(X.price(t-2:t-1));
+meandiff1 = mean(X.price(t-2:t-1)-P_e(t-2:t-1));
+meandiff2 = mean(P_e(t-2:t-1)-X.price(t-2:t-1));
+
+% % % form suggest for use in Dieci_inprint
+% vu=100/(mean(P_e(t-2:t-1))^2);
+% vl=vu;
+% cl=10000/(mean(P_e(t-2:t-1))^3); % making smaller increases feedback at small differences
+% cu=cl;
+% if Price<mean(P_e(t-2:t-1))
+%     capgain_feedbackparam=vl-cl*(Price-mean(P_e(t-2:t-1)));
+% else
+%     capgain_feedbackparam=vu+cu*(Price-mean(P_e(t-2:t-1)));
+% end
+
+w         = 1/(1+capgain_feedbackparam*(meandiff1).^2);
+y2        = -(b-a)*w+b;
+y1        = (b-a)*w+a;
+f         = betarnd(y1,y2,n,1);
+Pe_tplus1 = f*(X.price(t-1)+gamma*(meandiff1))+(1-f)*(X.price(t-1)+theta*(meandiff2));
+Eg_bubbly = (Pe_tplus1-X.price(t-1))/X.price(t-1);
+
+% % % environtmental component
+Eg_beliefs          = -risk_to_EnvExptdGains*X.rp_o; % environmental expectations 
+% env_risk_exposure   = (M.barr_elev-M.msl(t));  % note this MUST be made to vary between 0 and 1 - so at start, make sure the barr elev is 1
+env_risk_exposure   = 1-X.rp_o/0.3; %  (denom is max risk exposure)  % note this MUST be made to vary between 0 and 1 - so at start, make sure the barr elev is 1
+                                        % suggests that there is no need for realists inthis new way of doing it 
+I_realist           = A.I_realist;
+
+% add components together
+find_realist           = find(I_realist==1);
+X.g_o(find_realist)    = env_risk_exposure(find_realist).*Eg_bubbly(find_realist) + (1-env_risk_exposure(find_realist)).*Eg_beliefs(find_realist); % as the risk goes up, realists stop caring about arbitrage component
+find_surrealist        = find(I_realist==0);
+X.g_o(find_surrealist) = Eg_bubbly(find_surrealist);
+
+env_risk_exposure   = 1-X.rp_o/0.3;
+Eg_beliefsI            = -risk_to_EnvExptdGains*X.rp_I; % could make conversion factor larger/smarller
+X.g_I                  =  env_risk_exposure*mean(X.g_o(find_surrealist)) + (1-env_risk_exposure)*; % might not want to have as average of owner agents 
+% X.g_I                  =  env_risk_exposure + (1-env_risk_exposure)*Eg_beliefsI; % might not want to have as average of owner agents 
+
+
+% % SV.Eg_beliefs(t,:) = Eg_beliefs;
+% SV.Eg_bubbly(t,:)    = Eg_bubbly;
+% % SV.alph(t)         = alph;
+
+
+
+
+
+
+alph=rp/max(rp);
+
+
+% function [X,SV] = expected_capital_gains(ACOM,A,M,MMT,X,OF,SV);
+% % X  = X_OF;
+% % A  = A_OF;
+% % OF = 1;
+%
+% factor_beliefs=0.2;
+% factor_external=0.1;
+% t     = M.time;
+%
+% if t<11
+%     Price = mean(X.price(1:t-1));
+% else
+%     Price = mean(X.price(t-10:t-1));
+% end
+%
+% if OF==1
+%     n     = ACOM.n_OF;
+%     if t<11
+%         P_e   = mean(M.P_e_OF(1:t));
+%     else
+%         P_e   = mean(M.P_e_OF(t-10:t-1));
+%     end
+% else
+%     n     = ACOM.n_NOF;
+%     if t<11
+%         P_e   = mean(M.P_e_NOF(1:t));
+%     else
+%         P_e   = mean(M.P_e_NOF(t-10:t-1));
+%     end
+% end
+%
+% % bubbly component
+% nu        = 1e-9;
+% theta     = 1;
+% gamma     = 1;
+% w         = 1/(1+nu*(Price-P_e).^2);
+% y1        = -18*w+20;
+% y2        = 18*w+2;
+% f         = betarnd(y1,y2,n,1);
+% % f=1-f;  % quadruple check this to make this all makes sense
+% Pe_tplus1 = Price + theta*(P_e-Price)+(gamma+theta)*(1-f)*(Price-P_e);
+% Eg_bubbly = factor_external*(Pe_tplus1-Price)/Price;
+%
+% rp                     = X.rp_o;
+% Eg_beliefs             = -factor_beliefs*rp;
+% constant_convert_to_1  = 0.5;          % like this for now until figure out initial barrier height for main coupling
+% flood_exposure         = (M.barr_elev-M.msl(t));  % note this MUST be made to vary between 0 and 1 - so at start, make sure the barr elev is 1
+% alph                   = flood_exposure; %
+% I_realist              = A.I_realist;
+%
+% find_realist           = find(I_realist==1);
+% X.g_o(find_realist)    = Eg_bubbly(find_realist) + (1-alph)*Eg_beliefs(find_realist);
+%
+% find_surrealist        = find(I_realist==0);
+% X.g_o(find_surrealist) = Eg_bubbly(find_surrealist);
+%
+% Eg_beliefs             = - factor_beliefs*X.rp_I;
+% X.g_I                  = mean(Eg_bubbly) + (1-alph)*Eg_beliefs;
+%
+% if t<20
+%     find_large=find(abs(X.g_o)>0.05);
+%     X.g_o(find_large)=0.05*(X.g_o(find_large)./abs(X.g_o(find_large)));
+%
+%     if abs(X.g_I)>0.05
+%         X.g_I=0.05*(X.g_I/abs(X.g_I));
+%     end
+% end
+% %
+% % if t>=20
+% %     find_large=find(abs(X.g_o)>0.05);
+% %     X.g_o(find_large)=0.05*(X.g_o(find_large)./abs(X.g_o(find_large)));
+% %
+% %     if abs(X.g_I)>0.05
+% %         X.g_I=0.05*(X.g_I/abs(X.g_I));
+% %     end
+% % end
+%
+% SV.Eg_beliefs(t,:)     = Eg_beliefs;
+% SV.Eg_bubbly(t,:)      = Eg_bubbly;
+% SV.alph(t)             = alph;
+
+
+
