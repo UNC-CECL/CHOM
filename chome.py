@@ -7,6 +7,14 @@ from nourishment import (
     evaluate_nourishment_plans,
     calculate_evaluate_dunes,
 )
+from environment import (
+    evolve_environment,
+    calculate_expected_dune_height,
+    # calculate_expected_beach_width,
+)
+from user_cost import (
+    calculate_risk_premium,
+)
 
 
 class Chome:
@@ -187,26 +195,31 @@ class Chome:
         n2 = round(self._n_OF * (1 - self._agents_front_row.mkt[self._time_index - 1]))
 
         self._I_own = 0 * self._I_own
-        # rand_ownNOF = randi([1 ACOM.n_NOF], n1, 1)
-        # rand_ownOF = randi([ACOM.n_NOF + 1 ACOM.n_NOF + ACOM.n_OF], n2, 1)
-        # ACOM.I_own(rand_ownNOF) = 1
-        # ACOM.I_own(rand_ownOF) = 1
-        #
-        # M.time = t
-        # [MMT, ACOM] = evolve_environment(ACOM, M, MMT)
-        # [ACOM] = calculate_expected_dune_height(ACOM, M, MMT)
-        # [X_NOF] = calculate_risk_premium(ACOM, A_NOF, M, X_NOF, MMT)
-        # [X_OF] = calculate_risk_premium(ACOM, A_OF, M, X_OF, MMT)
-        BPC = calculate_nourishment_plan_cost(
-            self, self._agents_back_row, self._agents_front_row
+        rand_ownNOF = np.random.randint(1, high=self._n_NOF, size=n1)
+        rand_ownOF = np.random.randint(
+            self._n_NOF + 1, high=self._n_NOF + self._n_OF, size=n2
         )
-        [BPB, BPC] = calculate_nourishment_plan_ben(
-            self, self._agents_back_row, self._agents_front_row, BPC
-        )
-        MMT = evaluate_nourishment_plans(
-            self, self._agents_back_row, self._agents_front_row, BPB, BPC
-        )
-        # [ACOM, X_NOF, X_OF] = calculate_expected_beach_width(ACOM, M, MMT, X_NOF, X_OF)
+        self._I_own[
+            rand_ownNOF
+        ] = 1  # ZACK: is this the right index? same for below? (maybe add -1)
+        self._I_own[rand_ownOF] = 1
+
+        evolve_environment(self)
+        calculate_expected_dune_height(self)
+        calculate_risk_premium(self, self._agents_back_row)
+        calculate_risk_premium(self, self._agents_front_row)
+        # BPC = calculate_nourishment_plan_cost(
+        #     self, self._agents_back_row, self._agents_front_row
+        # )
+        # [BPB, BPC] = calculate_nourishment_plan_ben(
+        #     self, self._agents_back_row, self._agents_front_row, BPC
+        # )
+        # evaluate_nourishment_plans(
+        #     self, self._agents_back_row, self._agents_front_row, BPB, BPC
+        # )
+        # calculate_expected_beach_width(
+        #     self, self._agents_front_row, self._agents_back_row
+        # )
 
         # if t > 5:
         if self._time_index > 4:
