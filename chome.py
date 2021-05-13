@@ -104,139 +104,194 @@ class Chome:
         """
 
         self._name = name
-        self._n = total_number_of_agents
-        self._T = total_time
         self._time_index = 1
-        self._bta_OF = beach_width_beta_oceanfront
-        self._bta_NOF = beach_width_beta_nonoceanfront
-        self._share_OF = share_oceanfront
-        self._taxratio_OF = taxratio_oceanfront
-        self._theta_er = agent_erosion_update_weight
-        self._lam_storm = storm_frequency
-        self._sandcost = sand_cost
-        self._fixedcost_beach = fixed_cost_beach_nourishment
-        self._fixedcost_dune = fixed_cost_dune_nourishment
-        self._nourish_subsidy = nourishment_cost_subsidy
-        self._P_e_OF = external_housing_market_value_oceanfront
-        self._P_e_NOF = external_housing_market_value_nonoceanfront
-        self._expectation_horizon = agent_expectations_time_horizon
-        self._amort = nourishment_plan_loan_amortization_length
-        self._nourish_plan_horizon = nourishment_plan_time_commitment
-        self._Ddepth = beach_nourishment_fill_depth
-        self._lLength = beach_nourishment_fill_width
-        self._x0 = beach_full_cross_shore
-        self._delta_disc = discount_rate
-        self._h0 = dune_height_build
-        self._barr_elev = barrier_island_height
+        self._n = total_number_of_agents
+        # average risk premium real estate (same for investor and owner)
+        self._rp_I = np.zeros(1)
+        self._nourishment_off = 0
 
         ###############################################################################
-        # dependent variables: owner-agent
+        # share subsets of the variables in different classes for easy passing
         ###############################################################################
 
-        self._P_e_OF = external_housing_market_value_oceanfront + np.zeros(self._T)
-        self._P_e_NOF = external_housing_market_value_nonoceanfront + np.zeros(self._T)
-        self._n_NOF = round(self._n * (1 - self._share_OF))
-        self._n_OF = round(self._n * self._share_OF)
-        self._n_agent_total = self._n
-        self._Ebw = np.zeros(self._T)
-        self._Edh = np.zeros(self._T)
-        self._I_OF = np.zeros(self._n_agent_total)
-        self._I_OF[self._n_NOF + 1 : -1] = 1  # KA: check that this is right in Matlab
-        self._I_own = np.zeros(self._n_agent_total)
+        class ModelParameters:
+            def __init__(self):
+                self._T = total_time
+                self._ER = shoreline_retreat_rate + np.zeros(self._T)
+                self._horizon = nourishment_plan_time_commitment  # Zack, should this be"_M._nourish_plan_horizon"?
+                self._lam_storm = storm_frequency
+                self._P_e_OF = external_housing_market_value_oceanfront + np.zeros(
+                    self._T
+                )
+                self._P_e_NOF = external_housing_market_value_nonoceanfront + np.zeros(
+                    self._T
+                )
+                # KA: added seeded random number generator the size of n
+                self._RNG = np.random.default_rng(seed=total_number_of_agents)
+                self._storms = self._RNG.poisson(lam=self._lam_storm, size=self._T)
+                self._Tfinal = self._T - self._horizon
+                self._barr_elev = barrier_island_height
+                self._msl = np.zeros(self._T)
 
-        ###############################################################################
-        # physical parameters
-        ###############################################################################
+        class ManagementParameters:
+            def __init__(self):
+                self._amort = nourishment_plan_loan_amortization_length
+                self._beach_plan = 11 + np.zeros(total_time)
+                self._bta_NOF = beach_width_beta_nonoceanfront
+                self._bta_OF = beach_width_beta_oceanfront
+                self._builddunetime = np.zeros(total_time)
+                self._x0 = beach_full_cross_shore
+                self._bw = np.zeros(total_time)
+                self._bw[0] = self._x0
+                self._Ddepth = beach_nourishment_fill_depth
+                self._lLength = beach_nourishment_fill_width
+                # self._dunebens =  ZACK - delete?
+                self._fixedcost_beach = fixed_cost_beach_nourishment
+                self._fixedcost_dune = fixed_cost_dune_nourishment
+                self._h0 = dune_height_build
+                self._h_dune = np.zeros(total_time)
+                self._h_dune[0] = self._h0
+                self._nourishtime = np.zeros(total_time)
+                self._newplan = np.zeros(total_time)
+                # self._nourish_plan_horizon =   ZACK - what goes here?
+                self._sandcost = sand_cost
+                self._expectation_horizon = agent_expectations_time_horizon
+                self._delta_disc = discount_rate
+                self._taxratio_OF = taxratio_oceanfront
+                self._nourish_subsidy = nourishment_cost_subsidy
 
-        self._beach_plan = 11 + np.zeros(self._T)
-        self._h_dune = np.zeros(self._T)
-        self._h_dune[0] = self._h0
-        self._bw = np.zeros(self._T)
-        self._bw[0] = self._x0
-        self._E_ER = np.zeros(self._T)
-        self._ER = shoreline_retreat_rate + np.zeros(self._T)
-        self._nourishtime = np.zeros(self._T)
-        self._newplan = np.zeros(self._T)
-        self._builddunetime = np.zeros(self._T)
-        self._msl = np.zeros(self._T)
+        class AgentCommon:
+            def __init__(self):
+                self._share_OF = share_oceanfront
+                self._theta_er = agent_erosion_update_weight
+                self._Ebw = np.zeros(total_time)
+                self._Edh = np.zeros(total_time)
+                self._E_ER = np.zeros(total_time)
+                self._n_agent_total = total_number_of_agents
+                self._n_NOF = round(self._n_agent_total * (1 - self._share_OF))
+                self._n_OF = round(self._n_agent_total * self._share_OF)
+                self._I_OF = np.zeros(self._n_agent_total)
+                self._I_OF[
+                    self._n_NOF + 1 : -1
+                ] = 1  # KA: check that this is right in Matlab
+                self._I_own = np.zeros(self._n_agent_total)
 
-        # storms
-        self._RNG = np.random.default_rng(
-            seed=self._n
-        )  # KA: added seeded random number generator the size of n
-        self._storms = self._RNG.poisson(
-            lam=self._lam_storm, size=self._T
-        )  # poissrnd(lam_storm,T,1)
+        self._M = ModelParameters()
+        self._MMT = ManagementParameters()
+        self._ACOM = AgentCommon()
 
         ###############################################################################
         # agents/user cost
         ###############################################################################
 
-        # average risk premium real estate (same for investor and owner)
-        self._rp_I = np.zeros(1)
-        self._agents_front_row = Agents(
-            self._T,
-            self._n_OF,
-            self._bta_OF,
-        )  # formerly A_OF and X_OF
-        self._agents_back_row = Agents(
-            self._T,
-            self._n_NOF,
-            self._bta_NOF,
-        )  # formerly A_NOF and X_NOF
-
-        self._nourishment_off = 0
+        # front row
+        self._A_OF = Agents(  # also includes former X_OF variables
+            total_time,
+            self._ACOM._n_OF,
+            self._MMT._bta_OF,
+        )
+        # back row
+        self._A_NOF = Agents(  # also includes former X_NOF variables
+            total_time,
+            self._ACOM._n_NOF,
+            self._MMT._bta_NOF,
+        )
 
     def update(self):
         """Update Chome by a single time step"""
 
         # update market share = number of renters, 1-mkt = number renters
-        n1 = round(self._n_NOF * (1 - self._agents_back_row.mkt[self._time_index - 1]))
-        n2 = round(self._n_OF * (1 - self._agents_front_row.mkt[self._time_index - 1]))
+        n1 = round(self._ACOM._n_NOF * (1 - self._A_NOF.mkt[self._time_index - 1]))
+        n2 = round(self._ACOM._n_OF * (1 - self._A_OF.mkt[self._time_index - 1]))
 
-        self._I_own = 0 * self._I_own
-        rand_ownNOF = np.random.randint(1, high=self._n_NOF, size=n1)
+        self._ACOM._I_own = 0 * self._ACOM._I_own
+        rand_ownNOF = np.random.randint(1, high=self._ACOM._n_NOF, size=n1)
         rand_ownOF = np.random.randint(
-            self._n_NOF + 1, high=self._n_NOF + self._n_OF, size=n2
+            self._ACOM._n_NOF + 1, high=self._ACOM._n_NOF + self._ACOM._n_OF, size=n2
         )
-        self._I_own[
+        self._ACOM._I_own[
             rand_ownNOF
         ] = 1  # ZACK: is this the right index? same for below? (maybe add -1)
-        self._I_own[rand_ownOF] = 1
+        self._ACOM._I_own[rand_ownOF] = 1
 
-        evolve_environment(self)
-        calculate_expected_dune_height(self)
-        calculate_risk_premium(self, self._agents_back_row)
-        calculate_risk_premium(self, self._agents_front_row)
+        [self._MMT, self._ACOM] = evolve_environment(
+            self._time_index, self._ACOM, self._MMT, self._M
+        )
+        self._ACOM = calculate_expected_dune_height(
+            self._time_index, self._ACOM, self._MMT
+        )
+        self._A_NOF = calculate_risk_premium(
+            self._time_index, self._ACOM, self._A_NOF, self._M
+        )
+        self._A_OF = calculate_risk_premium(
+            self._time_index, self._ACOM, self._A_OF, self._M
+        )
         # BPC = calculate_nourishment_plan_cost(
-        #     self, self._agents_back_row, self._agents_front_row
+        #     self._ACOM, self._M, self._MMT, self._A_NOF, self._A_OF
         # )
         # [BPB, BPC] = calculate_nourishment_plan_ben(
-        #     self, self._agents_back_row, self._agents_front_row, BPC
+        #     self._A_NOF,
+        #     self._A_OF,
+        #     self._ACOM,
+        #     BPC,
+        #     self._M,
+        #     self._MMT,
         # )
-        # evaluate_nourishment_plans(
-        #     self, self._agents_back_row, self._agents_front_row, BPB, BPC
+        # [self._A_NOF, self._A_OF, self._MMT] = evaluate_nourishment_plans(
+        #     self._A_NOF,
+        #     self._A_OF,
+        #     self._ACOM,
+        #     BPB,
+        #     BPC,
+        #     self._M,
+        #     self._MMT,
+        #     self._nourishment_off,
         # )
-        # calculate_expected_beach_width(
-        #     self, self._agents_front_row, self._agents_back_row
+        # [self._ACOM, self._A_NOF, self._A_OF] = calculate_expected_beach_width(
+        #     self._ACOM, self._M, self._MMT
         # )
-
-        # if t > 5:
-        if self._time_index > 4:
-            MMT = calculate_evaluate_dunes(
-                self, self._agents_back_row, self._agents_front_row, MMT
-            )
-        #     [X_NOF, SV_NOF] = expected_capital_gains(ACOM, A_NOF, M, MMT, X_NOF, 0, SV_NOF, M.P_e_NOF, ACOM.n_NOF)
-        #     [X_OF, SV_OF] = expected_capital_gains(ACOM, A_OF, M, MMT, X_OF, 1, SV_OF, M.P_e_OF, ACOM.n_OF)
         #
-        # [X_NOF] = calculate_user_cost(M, X_NOF, X_NOF.WTP
-        # {t}, A_NOF.tau_prop(t))
-        # [X_OF] = calculate_user_cost(M, X_OF, X_OF.WTP
-        # {t}, A_OF.tau_prop(t))
-        # [A_NOF, X_NOF, SV_NOF] = agent_distribution_adjust(ACOM, A_NOF, X_NOF, M, SV_NOF, 0, MMT)
-        # [A_OF, X_OF, SV_OF] = agent_distribution_adjust(ACOM, A_OF, X_OF, M, SV_OF, 1, MMT)
-        #
-        # save_dynamic_var  # save stuff for analysis
+        # # if t > 5:
+        # if self._time_index > 4:
+        #     [self._A_NOF, self._A_OF, self._MMT] = calculate_evaluate_dunes(
+        #         self._ACOM, self._M, self._MMT, self._A_NOF, self._A_OF
+        #     )
+        #     [self._A_NOF, SV_NOF] = expected_capital_gains(
+        #         self._ACOM,
+        #         self._A_NOF,
+        #         self._M,
+        #         self._MMT,
+        #         0,
+        #         self._M._P_e_NOF,
+        #         self._ACOM._n_NOF,
+        #     )
+        #     [self._A_OF, SV_OF] = expected_capital_gains(
+        #         self._ACOM,
+        #         self._A_OF,
+        #         self._M,
+        #         self._MMT,
+        #         1,
+        #         self._M._P_e_OF,
+        #         self._ACOM._n_OF,
+        #     )
+        # self._A_NOF = calculate_user_cost(
+        #     self._M,
+        #     self._A_NOF,
+        #     self._A_NOF._WTP[self._time_index],
+        #     self._A_NOF._tau_prop[self._time_index],
+        # )
+        # self._A_NOF = calculate_user_cost(
+        #     self._M,
+        #     self._A_OF,
+        #     self._A_OF._WTP[self._time_index],
+        #     self._A_OF._tau_prop[self._time_index],
+        # )
+        # [self._A_NOF, SV_NOF] = agent_distribution_adjust(
+        #     self._ACOM, self._A_NOF, self._M, SV_NOF, 0, self._MMT
+        # )
+        # [self._A_OF, SV_OF] = agent_distribution_adjust(
+        #     self._ACOM, self._A_OF, self._M, SV_OF, 1, self._MMT
+        # )
 
         self._time_index += 1
 

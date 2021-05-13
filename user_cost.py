@@ -1,15 +1,15 @@
 import numpy as np
 
 
-def calculate_risk_premium(chome, agents):
-    t = chome.time_index
+def calculate_risk_premium(time_index, ACOM, A, M):
+    t = time_index
 
     if (
         t > 4
     ):  # Zack: need to check the indexing here (remember that t starts at 1 in this model and not 2, changed all the 5 to 4 below)
-        if np.sum(chome._storms[t - 4 : t]) != 0:
+        if np.sum(M._storms[t - 4 : t]) != 0:
             storm_flag = 1
-            storm_time = chome._storms[t - 4 : t]
+            storm_time = M._storms[t - 4 : t]
 
             # for ii=2:6
             for ii in range(
@@ -23,22 +23,22 @@ def calculate_risk_premium(chome, agents):
     else:
         storm_flag = 0
 
-    p1 = 1 / (chome._barr_elev - chome._msl[t]) ** 0.2
-    p2 = 1 / (2 + chome._Edh[t] ** 0.2 * ((chome._barr_elev - chome._msl[t])))
+    p1 = 1 / (M._barr_elev - M._msl[t]) ** 0.2
+    p2 = 1 / (2 + ACOM._Edh[t] ** 0.2 * (M._barr_elev - M._msl[t]))
 
     # for ii =1:size(chome._rp_o, 1)
-    for ii in range(1, agents._rp_o):
+    for ii in range(1, np.size(A._rp_o)):
 
-        if agents._I_realist[ii] == 0:
-            agents._rp_o[ii] = 0.2 * p1 * p2 - agents._rp_base[ii]
+        if A._I_realist[ii] == 0:
+            A._rp_o[ii] = 0.2 * p1 * p2 - A._rp_base[ii]
 
-        if agents._I_realist[ii] == 1 & storm_flag == 0:
-            agents._rp_o[ii] = 0.2 * p1 * p2 - agents._rp_base[ii]
+        if A._I_realist[ii] == 1 & storm_flag == 0:
+            A._rp_o[ii] = 0.2 * p1 * p2 - A._rp_base[ii]
 
-        if agents._I_realist[ii] == 1 & storm_flag == 1:
-            agents._rp_o[ii] = 0.2 * p1 * p2 - agents._rp_base[ii] + storm_salience
+        if A._I_realist[ii] == 1 & storm_flag == 1:
+            A._rp_o[ii] = 0.2 * p1 * p2 - A._rp_base[ii] + storm_salience
 
-    X_rpI_base = np.mean(agents._range_rp_base)
-    agents._rp_I = 0.2 * p1 * p2 - X_rpI_base
+    X_rpI_base = np.mean(A._range_rp_base)
+    A._rp_I = 0.2 * p1 * p2 - X_rpI_base
 
-    return
+    return A
