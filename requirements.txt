@@ -1,0 +1,3 @@
+copulas
+numpy
+scipy
