@@ -1,0 +1,7 @@
+include CHANGES.rst
+include CREDITS.rst
+include LICENSE.rst
+include README.rst
+include requirements.txt
+
+recursive-exclude Version-1.0-Matlab *
