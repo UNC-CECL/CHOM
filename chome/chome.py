@@ -1,18 +1,18 @@
 import numpy as np
 
-from agents import Agents
-from nourishment import (
+from .agents import Agents
+from .nourishment import (
     calculate_nourishment_plan_cost,
     calculate_nourishment_plan_ben,
     evaluate_nourishment_plans,
     calculate_evaluate_dunes,
 )
-from environment import (
+from .environment import (
     evolve_environment,
     calculate_expected_dune_height,
     # calculate_expected_beach_width,
 )
-from user_cost import (
+from .user_cost import (
     calculate_risk_premium,
 )
 
