@@ -5,10 +5,10 @@ from .agents import (
     agent_distribution_adjust,
 )
 from .nourishment import (
-      calculate_nourishment_plan_cost,
-      calculate_nourishment_plan_ben,
-      evaluate_nourishment_plans,
-#     # calculate_evaluate_dunes,
+    calculate_nourishment_plan_cost,
+    calculate_nourishment_plan_ben,
+    evaluate_nourishment_plans,
+    calculate_evaluate_dunes,
 )
 from .environment import (
     evolve_environment,
@@ -27,7 +27,7 @@ class Chome:
         self,
         name="default",
         total_number_of_agents=2500,
-        agent_expectations_time_horizon= 30,
+        agent_expectations_time_horizon=30,
         agent_erosion_update_weight=0.5,
         barrier_island_height=1,
         beach_width_beta_oceanfront=0.2,
@@ -158,11 +158,18 @@ class Chome:
                 self._taxratio_OF = taxratio_oceanfront
                 self._nourish_subsidy = nourishment_cost_subsidy
                 self._nourishment_menu_cost = np.zeros(11)
-                self._nourishment_menu_bw = np.zeros(shape=(11, agent_expectations_time_horizon))
+                self._nourishment_menu_bw = np.zeros(
+                    shape=(11, agent_expectations_time_horizon)
+                )
                 self._nourishment_menu_add_tax = np.zeros(11)
                 self._nourishment_menu_totalcostperyear = np.zeros(11)
-                self._nourishment_menu_taxburden = np.zeros(shape=(total_number_of_agents, 11))
-                self._nourishment_pricelist = np.zeros(shape=(total_number_of_agents, 11))
+                self._nourishment_menu_taxburden = np.zeros(
+                    shape=(total_number_of_agents, 11)
+                )
+                self._nourishment_pricelist = np.zeros(
+                    shape=(total_number_of_agents, 11)
+                )
+                self._dune_pricelist = np.zeros(shape=(total_number_of_agents, 2))
                 self._OF_plan_price = np.zeros(11)
                 self._NOF_plan_price = np.zeros(11)
 
@@ -179,7 +186,9 @@ class Chome:
                 self._n_agent_total = total_number_of_agents
                 self._n_NOF = round(self._n_agent_total * (1 - self._share_OF))
                 self._n_OF = round(self._n_agent_total * self._share_OF)
-                self._I_OF = np.zeros(self._n_agent_total) # the first n_NOF spots are back row, remaining are front row
+                self._I_OF = np.zeros(
+                    self._n_agent_total
+                )  # the first n_NOF spots are back row, remaining are front row
                 self._I_OF[self._n_NOF + 1 : -1] = 1
                 self._I_own = np.zeros(self._n_agent_total)
 
@@ -237,37 +246,28 @@ class Chome:
         self._ACOM._I_own[of_indices[0:n2]] = 1
 
         [self._MMT, self._ACOM] = evolve_environment(
-            self._time_index,
-            self._ACOM,
-            self._MMT,
-            self._M
+            self._time_index, self._ACOM, self._MMT, self._M
         )
 
         self._ACOM = calculate_expected_dune_height(
-            self._time_index,
-            self._ACOM,
-            self._MMT
+            self._time_index, self._ACOM, self._MMT
         )
         self._A_NOF = calculate_risk_premium(
             self._time_index,
             self._ACOM,
             self._A_NOF,
             self._M,
-            frontrow_on=True,
+            frontrow_on=False,
         )
         self._A_OF = calculate_risk_premium(
             self._time_index,
             self._ACOM,
             self._A_OF,
             self._M,
-            frontrow_on=False,
+            frontrow_on=True,
         )
         self._MMT = calculate_nourishment_plan_cost(
-            self._time_index,
-            self._ACOM,
-            self._MMT,
-            self._A_NOF,
-            self._A_OF
+            self._time_index, self._ACOM, self._MMT, self._A_NOF, self._A_OF
         )
 
         self._MMT = calculate_nourishment_plan_ben(
@@ -279,24 +279,16 @@ class Chome:
         )
 
         [self._A_NOF, self._A_OF, self._MMT] = evaluate_nourishment_plans(
-            self._time_index,
-            self._MMT,
-            self._A_OF,
-            self._A_NOF,
-            self._ACOM
+            self._time_index, self._MMT, self._A_OF, self._A_NOF, self._ACOM
         )
 
         [self._ACOM, self._A_NOF, self._A_OF] = calculate_expected_beach_width(
-            self._time_index,
-            self._MMT,
-            self._ACOM,
-            self._A_OF,
-            self._A_NOF
+            self._time_index, self._MMT, self._ACOM, self._A_OF, self._A_NOF
         )
 
-        #     [self._A_NOF, self._A_OF, self._MMT] = calculate_evaluate_dunes(
-        #         self._ACOM, self._M, self._MMT, self._A_NOF, self._A_OF
-        #     )
+        [self._A_OF, self._A_NOF, self._MMT] = calculate_evaluate_dunes(
+            self._time_index, self._MMT, self._M, self._ACOM, self._A_OF, self._A_NOF
+        )
 
         self._A_OF = expected_capital_gains(
             self._time_index,
@@ -305,22 +297,22 @@ class Chome:
             frontrow_on=True,
         )
 
-        self._A_OF = expected_capital_gains(
-            self._time_index,
-            self._A_OF,
-            self._M,
-            frontrow_on=False,
-        )
-
-        self._A_NOF = calculate_user_cost(
+        self._A_NOF = expected_capital_gains(
             self._time_index,
             self._A_NOF,
-            self._A_OF._tau_prop[self._time_index],
+            self._M,
+            frontrow_on=False,
         )
 
         self._A_OF = calculate_user_cost(
             self._time_index,
             self._A_OF,
+            self._A_OF._tau_prop[self._time_index],
+        )
+
+        self._A_NOF = calculate_user_cost(
+            self._time_index,
+            self._A_NOF,
             self._A_NOF._tau_prop[self._time_index],
         )
 

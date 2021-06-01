@@ -13,9 +13,17 @@ def calculate_risk_premium(time_index, ACOM, A, M, frontrow_on):
         of = 0
 
     for ii in range(1, np.size(A._rp_o)):
-        A._rp_o[ii] = (a - b * (M._barr_elev - M._msl[t]) - c * ACOM._Edh[t] * (M._barr_elev - M._msl[t])) * A._rp_base[ii] + of * 0.01
+        A._rp_o[ii] = (
+            a
+            - b * (M._barr_elev - M._msl[t])
+            - c * ACOM._Edh[t] * (M._barr_elev - M._msl[t])
+        ) * A._rp_base[ii] + of * 0.01
 
-    A._rp_I = (a - b * (M._barr_elev - M._msl[t]) - c * ACOM._Edh[t] * (M._barr_elev - M._msl[t])) * np.mean(A._range_rp_base) + of * 0.01
+    A._rp_I = (
+        a
+        - b * (M._barr_elev - M._msl[t])
+        - c * ACOM._Edh[t] * (M._barr_elev - M._msl[t])
+    ) * np.mean(A._range_rp_base) + of * 0.01
 
     return A
 
@@ -38,7 +46,11 @@ def calculate_user_cost(time_index, A, tau_prop):
 
     for i in range(0, A._n):
         P_bid = owner_info[i, 0] + A._epsilon
-        R_i = P_bid * ((A._delta + A._tau_prop[t]) * (1 - A._tau_c) + A._gam + A._rp_I - A._g_I) - A._m
+        R_i = (
+            P_bid
+            * ((A._delta + A._tau_prop[t]) * (1 - A._tau_c) + A._gam + A._rp_I - A._g_I)
+            - A._m
+        )
 
         vacant = np.zeros(i)
         if R_i < 0:
@@ -48,7 +60,7 @@ def calculate_user_cost(time_index, A, tau_prop):
             if R_i > owner_info[j, 1]:
                 vacant[j] = 1
 
-        vacancies[i] = np.sum(vacant[0:i + 1])
+        vacancies[i] = np.sum(vacant[0 : i + 1])
         rent_store[i] = R_i
         P_invest_store[i] = P_bid
 
@@ -100,4 +112,3 @@ def expected_capital_gains(time_index, A, M, frontrow_on):
         A._g_o = A._g_o * 0 + price_return
 
     return A
-

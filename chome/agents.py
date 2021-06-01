@@ -17,6 +17,7 @@ Notes
 """
 
 import numpy as np
+
 # from copulas.multivariate import GaussianMultivariate
 from scipy.stats import beta
 from scipy.stats import norm  # contains PDF of Gaussian
@@ -107,7 +108,9 @@ def agent_distribution_adjust(time_index, M, A, ACOM, frontrow_on):
         switching_speed = A._beta_x * (A._adjust_beta_x) / cutoff1
 
     if A._beta_x > cutoff2 and A._beta_x <= 1:
-        switching_speed = -(A._adjust_beta_x / cutoff1) * A._beta_x + A._adjust_beta_x / cutoff1
+        switching_speed = (
+            -(A._adjust_beta_x / cutoff1) * A._beta_x + A._adjust_beta_x / cutoff1
+        )
 
     if A._beta_x >= cutoff1 and A._beta_x <= cutoff2:
         switching_speed = A._adjust_beta_x
@@ -120,7 +123,11 @@ def agent_distribution_adjust(time_index, M, A, ACOM, frontrow_on):
 
     W = 1 / (1 + A._beta_x_feedbackparam * (A._price[t] - P_e[t]) ** 2)
 
-    A._beta_x = A._beta_x + W * switching_speed * (A._price[t] - P_e[t]) - (1 - W) * switching_speed * (P_e[t] - A._price[t])
+    A._beta_x = (
+        A._beta_x
+        + W * switching_speed * (A._price[t] - P_e[t])
+        - (1 - W) * switching_speed * (P_e[t] - A._price[t])
+    )
 
     if A._beta_x > 1:
         A._beta_x = 1
@@ -128,23 +135,20 @@ def agent_distribution_adjust(time_index, M, A, ACOM, frontrow_on):
     if A._beta_x < 0:
         A._beta_x = 0
 
-    [A._tau_o,
-    A._WTP_base,
-    A._rp_base,
-    A._WTP_alph,
-] = agent_distribution(
-    A._rcov,
-    A._range_WTP_base,
-    A._range_WTP_alph,
-    A._range_tau_o,
-    A._range_rp_base,
-    A._beta_x,
-    A._n,
-)
+    [A._tau_o, A._WTP_base, A._rp_base, A._WTP_alph,] = agent_distribution(
+        A._rcov,
+        A._range_WTP_base,
+        A._range_WTP_alph,
+        A._range_tau_o,
+        A._range_rp_base,
+        A._beta_x,
+        A._n,
+    )
 
     A = calculate_risk_premium(time_index, ACOM, A, M, frontrow_on)
 
     return A
+
 
 class Agents:
     def __init__(
