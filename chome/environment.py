@@ -1,97 +1,72 @@
 import numpy as np
+import copy as copy
 
 
-def evolve_environment(time_index, ACOM, MMT, M):
+def evolve_environment(time_index, acom, mmt, m):
     t = time_index
 
-    if MMT._nourishtime[t] == 1:  # if nourish is scheduled
-        MMT._bw[t] = MMT._x0
-        ACOM._E_ER[t] = (
-            ACOM._theta_er * M._ER[t] + (1 - ACOM._theta_er) * ACOM._E_ER[t - 1]
+    if mmt._nourishtime[t] == 1:  # if nourish is scheduled
+        mmt._bw[t] = mmt._x0
+        acom._E_ER[t] = (
+            acom._theta_er * m._ER[t] + (1 - acom._theta_er) * acom._E_ER[t - 1]
         )
     else:
-        MMT._bw[t] = MMT._bw[t - 1] - M._ER[t]
-        ACOM._E_ER[t] = (
-            ACOM._theta_er * M._ER[t] + (1 - ACOM._theta_er) * ACOM._E_ER[t - 1]
+        mmt._bw[t] = mmt._bw[t - 1] - m._ER[t]
+        acom._E_ER[t] = (
+            acom._theta_er * m._ER[t] + (1 - acom._theta_er) * acom._E_ER[t - 1]
         )
 
-    if M._storms[t] == 1:
-        damage = 0.3 + (0.3 * np.random.rand(1))
-        if MMT._nourishtime[t] == 1:
-            MMT._bw[t] = MMT._x0 * damage
-            MMT._h_dune[t] = MMT._h0 * damage
+    if mmt._builddunetime[t] == 1:  # if dune build is scheduled
+        mmt._h_dune[t] = mmt._h0  # then build it back up
+    else:
+        mmt._h_dune[t] = mmt._h_dune[t - 1] - 0.2
+
+
+    if mmt._bw[t] < 1:
+        mmt._bw[t] = 1
+
+    if mmt._h_dune[t] < 0.1:
+        mmt._h_dune[t] = 0.1
+
+    return mmt, acom
+
+
+def calculate_expected_dune_height(time_index, acom, mmt):
+    t = time_index
+    expectation_horizon = mmt._expectation_horizon
+    if t > expectation_horizon:
+        acom._Edh[t] = np.mean(mmt._h_dune[t - (expectation_horizon-1): t])
+    else:
+        acom._Edh[t] = np.mean(mmt._h_dune[0:t])
+    return acom
+
+
+def calculate_expected_beach_width(time_index, mmt, acom, a_of, a_nof):
+    t = time_index
+    exp_bw = copy.deepcopy(mmt._bw)
+    bw_back = np.zeros(t + mmt._nourish_plan_horizon)
+
+    for time in range(t + 1, t + mmt._nourish_plan_horizon):
+        if mmt._nourishtime[time] == 1:
+            exp_bw[time] = mmt._x0
         else:
-            MMT._bw[t] = MMT._bw[t - 1] * damage
-            MMT._h_dune[t] = MMT._h_dune[t - 1] * damage
+            exp_bw[time] = exp_bw[time - 1] - acom._E_ER[t]
 
-    if MMT._bw[t] < 1:
-        MMT._bw[t] = 1
+    exp_bw[exp_bw < 1] = 1
+    ind = 0
 
-    # dunes - build, keep the same, wipeout due to storm
-    if MMT._builddunetime[t] == 1:  # if dune build is scheduled
-        MMT._h_dune[t] = MMT._h0  # then build it back up
-
-    if (
-        MMT._builddunetime[t] == 0 & M._storms[t] > 0
-    ):  # for demonstration purposes only, if storm value greater than 5, then destoy dunes
-        MMT._h_dune[t] = 0
-
-    if MMT._builddunetime[t] == 0:
-        MMT._h_dune[t] = MMT._h_dune[t - 1] - 0.2  # or else keep them the same
-    if MMT._h_dune[t] < 0.1:
-        MMT._h_dune[t] = 0.1
-
-    return MMT, ACOM
-
-
-def calculate_expected_dune_height(time_index, ACOM, MMT):
-
-    t = time_index
-
-    # should pass in a control on backward time depth
-    if t > 29:
-        ACOM._Edh[t] = np.mean(MMT._h_dune[t - 29 : t])
+    if t > mmt._expectation_horizon:
+        for time in range(t + 1, t + mmt._nourish_plan_horizon):
+            bw_back[ind] = np.average(exp_bw[time - (mmt._expectation_horizon-1):time])
+            ind += 1
     else:
-        # ACOM.Edh(t) = mean(MMT.h_dune(1:t));
-        ACOM._Edh[t] = np.mean(MMT._h_dune[0:t])
+        for time in range(t + 1, t + mmt._nourish_plan_horizon):
+            bw_back[ind] = np.average(exp_bw[time - t:time])
+            ind += 1
+    acom._Ebw[t] = np.mean(bw_back)
 
-    return ACOM
+    # expected willingness to pay
+    a_nof._wtp = a_nof._WTP_base + a_nof._WTP_alph * acom._Ebw[t] ** a_nof._bta
+    a_of._wtp  = a_of._WTP_base + a_of._WTP_alph * acom._Ebw[t] ** a_of._bta
 
-
-# def calculate_expected_beach_width(chome, agents_front_row, agents_back_row):
-#     t = chome.time_index
-#
-#     # bw var here is historical up to time t, and is predicted and incorporating nourishment for times t+1 to t+10
-#     bw = chome._bw
-#
-#     for time in range(t + 1, t + 30):
-#         if chome._nourishtime(time) == 1:
-#             bw[time] = chome._x0
-#         else:
-#             bw[time] = bw[time - 1] - chome._E_ER[t]
-#
-#     bw[bw < 1] = 1
-#
-#     # check for problem here - why 10?
-#     ind = 1
-#     if t > 30:
-#         for time in range(t + 1, t + 10):
-#             bw_back[ind] = np.mean(bw[time - 29:time])
-#             ind = ind + 1
-#     else:
-#         for time in range(t + 1, t + 10):
-#             bw_back[ind] = np.mean(bw[time - t:time])
-#             ind = ind + 1
-#
-#     chome._Ebw[t] = np.mean(bw_back)
-#
-#     # expected willingness to pay
-#     agents_back_row._WTP[t] = agents_back_row._WTP_base + \
-#                               agents_back_row._WTP_alph * \
-#                               chome._Ebw[t] ** agents_back_row._bta
-#
-#     agents_front_row._WTP[t] = agents_front_row._WTP_base + \
-#                                agents_front_row._WTP_alph * \
-#                                chome._Ebw[t] ** agents_front_row._bta
-#
-#     return
+    return acom, a_nof, a_of

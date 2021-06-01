@@ -1,174 +1,206 @@
 import numpy as np
+import copy as copy
+from .user_cost import calculate_user_cost
+import numpy.matlib
 
 
-def calculate_nourishment_plan_cost(chome, agents_front_row, agents_back_row):
-    # function[BPC] = calculate_nourishment_plan_cost(ACOM, M, MMT, X_NOF, X_OF)
+def evaluate_nourishment_future_beach_width(time_index, mmt, ACOM, nourish_interval):
+    t = time_index
+    t_horiz = mmt._expectation_horizon + 1
+    bw = np.zeros(t_horiz)
+    bw[0] = mmt._x0
+    nourish_xshore = np.zeros(t_horiz)
+    nourishplan_new = np.zeros(t_horiz)
+    nourishplan_last = mmt._nourishtime[t+1:t+t_horiz+1]
+    n = np.arange(0, t_horiz, nourish_interval)
+    nourishplan_new[n] = 1
+    nourish_count = nourishplan_last + nourishplan_new
+    for time in range(1, t_horiz):
+        if nourish_count[time] == 1 and time+1 < t_horiz:
+            bw[time] = mmt._x0
+            nourish_xshore[time] = mmt._x0 - (bw[time - 1] - ACOM._E_ER[t])
+        elif nourish_count[time] == 2:
+            bw[time] = mmt._x0
+        else:
+            bw[time] = bw[time - 1] - ACOM._E_ER[t]
 
-    #
-    # t = M.time;
-    # I_OF = ACOM.I_OF;
-    # I_own = ACOM.I_own;
-    t = chome.time_index
-    I_OF = chome._I_OF
-    I_own = chome._I_own
+    bw[bw<0] = 0
+    nourish_yr = np.argwhere(bw == mmt._x0)
+    nourish_xshore = nourish_xshore[nourish_yr]
+    nourish_xshore[0] = mmt._x0 - mmt._bw[t]
+    mbw = np.mean(bw)
 
-    # these for variables will probably come from physical model
-    # Llength = MMT.lLength;
-    # sandcost = MMT.sandcost;
-    # Ddepth = MMT.Ddepth;
-    # fixedcost = MMT.fixedcost_beach;
-    # nourish_plan_horizon = MMT.nourish_plan_horizon; % nourish
-    # proposal
-    # length(10
-    # yrs)
-    # expectation_horizon = MMT.expectation_horizon; % might
-    # rename
-    # delta = MMT.delta_disc;
-    #
-    # % loop
-    # over
-    # all
-    # nourishment
-    # plans(indexed as the
-    # nourishment
-    # interval
-    # for nourishment_interval = 1:10
-    #
-    # i = nourishment_interval; % i = nourishment
-    # interval(nourish
-    # every
-    # i
-    # years)
-    #
-    # [bw, nourish_xshore, nourish_yr, mbw] = evaluate_nourishment_future_beach_width(ACOM, M, MMT, i);
-    #
-    # fcost = fixedcost. * ones(length(nourish_yr), 1). / ((1 + delta). ^ nourish_yr(:));
-    # namount = nourish_xshore * Ddepth * Llength * sandcost;
-    # varcost = namount. / ((1 + delta). ^ nourish_yr);
-    # maxplan = find(nourish_yr > 11); % how
-    # many
-    # years
-    # to
-    # consider
-    # costs
-    # over?
-    # maxplan = maxplan(1) - 1;
-    # BPC.cost(i) = sum(fcost(1:maxplan))+sum(varcost(1: maxplan))-MMT.nourish_subsidy;
-    #
-    # if t > 30
-    # bw_future = [MMT.bw(1:t); bw]; % consists
-    # of
-    # past
-    # beach
-    # width
-    # plus
-    # future
-    # expected
-    # nourishments
-    # ind = 1;
-    # for t2 = t + 1:t + expectation_horizon
-    # Ebw_future(ind) = mean(bw_future(t2 - 29:t2)); % projection
-    # of
-    # expected
-    # beach
-    # width
-    # over
-    # next
-    # 30
-    # years
-    # ind = ind + 1;
-    # end
-    # BPC.bw(i,:) = Ebw_future(:);
-    # else
-    # bw_future = [MMT.bw(1:t); bw]; % consists
-    # of
-    # past
-    # beach
-    # width
-    # plus
-    # future
-    # expected
-    # nourishments
-    # ind = 1;
-    # for t2 = t + 1:t + expectation_horizon
-    # Ebw_future(ind) = mean(bw_future(t2 - (t - 1):t2));
-    # ind = ind + 1;
-    # end
-    # BPC.bw(i,:) = Ebw_future(:);
-    # end
-    #
-    # BPC.tc_peryear(i) = BPC.cost(i) * delta * (1 + delta) ^ MMT.amort / ((1 + delta) ^ MMT.amort - 1); % loan
-    # amortization
-    #
-    # end
-    #
-    # for nourishment_interval = 1:10
-    # i = nourishment_interval;
-    #
-    # % get
-    # base
-    # tax
-    # rate
-    # BPC.tau_add(i) = (MMT.amort) * BPC.tc_peryear(i) / sum(
-    #     MMT.taxratio_OF * I_OF. * X_OF.price(t - 1) + (1 - I_OF) * X_NOF.price(t - 1));
-    #
-    # % total
-    # tax
-    # burden
-    # BPC.tax_burden(:, i) = (MMT.amort) * (BPC.tau_add(i) * (1 - I_OF) * X_NOF.price(t - 1) + ...
-    #                                       MMT.taxratio_OF * BPC.tau_add(i) * I_OF. * X_OF.price(t - 1));
-    #
-    # end
-    return t
+    return bw, nourish_xshore, nourish_yr, mbw
 
 
-def calculate_nourishment_plan_ben(chome, agents_back_row, agents_front_row, BPC):
-    # def calculate_nourishment_plan_cost(chome, agents_front_row, agents_back_row):
-    # function [BPB,BPC]=calculate_nourishment_plan_ben(A_NOF,A_OF,ACOM,BPC,M,MMT,X_NOF,X_OF)
-    #
-    # t=M.time;
-    #
-    # for nourishment_interval = 1:10
-    #     i                  = nourishment_interval;
-    #     BPC.mbw(i)         = mean(BPC.bw(i,:));
-    #     WTP_plan_NOF       = X_NOF.WTP_base+X_NOF.WTP_alph*BPC.mbw(i)^MMT.bta_NOF;
-    #     WTP_plan_OF        = X_OF.WTP_base+X_OF.WTP_alph*BPC.mbw(i)^MMT.bta_OF;
-    #     tauprop_NOF        = A_NOF.tau_prop(t+1:t+MMT.amort)+BPC.tau_add(i);
-    #     [X_NOF]            = calculate_user_cost(M,X_NOF,WTP_plan_NOF,tauprop_NOF(1));
-    #     tauprop_OF         = A_OF.tau_prop(t+1:t+MMT.amort)+BPC.tau_add(i)*MMT.taxratio_OF;
-    #     [X_OF]             = calculate_user_cost(M,X_OF,WTP_plan_OF,tauprop_OF(1));
-    #     BPB.prop_plan(1,i) = X_NOF.price(t);
-    #     BPB.prop_plan(2,i) = X_OF.price(t);
-    # end
-    #
-    # mbw_noplan = MMT.bw(t)-ACOM.E_ER(t):-ACOM.E_ER(t):MMT.bw(t)-ACOM.E_ER(t)*MMT.expectation_horizon;
-    # mbw_noplan(mbw_noplan<1)=1;
-    # mbw_noplan = mean(mbw_noplan);
-    #
-    # WTP_plan_NOF        =  X_NOF.WTP_base+X_NOF.WTP_alph *mbw_noplan ^MMT.bta_NOF;
-    # WTP_plan_OF         =  X_OF.WTP_base+X_OF.WTP_alph *mbw_noplan ^MMT.bta_OF;
-    #
-    # [X_NOF]             = calculate_user_cost(M,X_NOF,WTP_plan_NOF,A_NOF.tau_prop(t+1));
-    # [X_OF]              = calculate_user_cost(M,X_OF,WTP_plan_OF,A_OF.tau_prop(t+1));
-    # BPB.prop_plan(1,11) = X_NOF.price(t);
-    # BPB.prop_plan(2,11) = X_OF.price(t);
-    #
-    #
-    # price_list=zeros(ACOM.n_agent_total,11);
-    # for ii=1:11
-    #     price_list(1:ACOM.n_NOF,ii)=BPB.prop_plan(1,ii);
-    #     price_list(ACOM.n_NOF+1:ACOM.n_NOF+ACOM.n_OF,ii)=BPB.prop_plan(2,ii);
-    # end
-    # BPB.price_list=price_list;
+def calculate_nourishment_plan_cost(time_index, ACOM, mmt, A_OF,A_NOF):
+    t = time_index
+    I_OF = ACOM._I_OF
+    I_own = ACOM._I_own
+    Llength = mmt._lLength
+    sandcost = mmt._sandcost
+    Ddepth = mmt._Ddepth
+    fixedcost = mmt._fixedcost_beach
+    nourish_plan_horizon = mmt._nourish_plan_horizon
+    expectation_horizon = mmt._expectation_horizon
+    delta = mmt._delta_disc
+    cost = np.zeros(10)
+    amort = mmt._amort
 
-    return BPB, BPC
+    for i in range(0, 10):
+        [bw, nourish_xshore, nourish_yr, mbw] = evaluate_nourishment_future_beach_width(time_index, mmt, ACOM, i + 1)
+        nourish_yr = nourish_yr + 1
+        fcost = (fixedcost) / ((1 + delta) ** nourish_yr)
+        namount = nourish_xshore * Ddepth * Llength * sandcost
+        varcost = namount / (((1 + delta) ** nourish_yr))
+        maxplan = np.argwhere(nourish_yr > 11)  # only consider costs over next 10 years
+        maxplan = maxplan[0, 0]
+        mmt._nourishment_menu_cost[i] = np.sum(fcost[0:maxplan]) + np.sum(varcost[0:maxplan]) - mmt._nourish_subsidy
+        Ebw_future = np.zeros(expectation_horizon)
+        if t > 30:
+            bw_future = np.concatenate((mmt._bw[0:t + 1], bw))
+            ind = 0
+            for t2 in range(t + 1, t + expectation_horizon + 1):
+                mmt._nourishment_menu_bw[i, ind] = np.average(bw_future[t2 - (expectation_horizon - 1):t2 + 1])
+                ind += 1
+        else:
+            bw_future = np.concatenate((mmt._bw[0:t + 1], bw))
+            ind = 0
+            for t2 in range(t + 1, t + expectation_horizon + 1):
+                mmt._nourishment_menu_bw[i, ind] = np.average(bw_future[t2 - (t - 1) - 1:t2 + 1])
+                ind += 1
+
+        mmt._nourishment_menu_totalcostperyear[i] = mmt._nourishment_menu_cost[i] * delta * (1 + delta) ** amort / (
+                    (1 + delta) ** amort - 1)
+
+    i = 10
+    mmt._nourishment_menu_cost[10] = 0
+    if ACOM._E_ER[t] != 0:
+        bw = np.arange(mmt._bw[t] - ACOM._E_ER[t], mmt._bw[t] - ACOM._E_ER[t] * (1 + mmt._expectation_horizon),
+                       -ACOM._E_ER[t])
+    else:
+        bw = np.ones(mmt._expectation_horizon) * mmt._bw[t]
+
+    if t > 30:
+        bw_future = np.concatenate((mmt._bw[0:t + 1], bw))
+        ind = 0
+        for t2 in range(t + 1, t + expectation_horizon + 1):
+            mmt._nourishment_menu_bw[i, ind] = np.average(bw_future[t2 - (expectation_horizon - 1):t2 + 1])
+            ind += 1
+    else:
+        bw_future = np.concatenate((mmt._bw[0:t + 1], bw))
+        ind = 0
+        for t2 in range(t + 1, t + expectation_horizon + 1):
+            mmt._nourishment_menu_bw[i, ind] = np.average(bw_future[t2 - (t - 1) - 1:t2 + 1])
+            ind += 1
+
+    mmt._nourishment_menu_totalcostperyear[i] = mmt._nourishment_menu_cost[i] * delta * (1 + delta) ** amort / ((1 + delta) ** amort - 1)
+
+    for i in range(0, 11):
+        mmt._nourishment_menu_add_tax[i] = amort * mmt._nourishment_menu_totalcostperyear[i] / np.sum(mmt._taxratio_OF * I_OF * A_OF._price[t - 1] + (1 - I_OF) * A_NOF._price[t - 1])
+        mmt._nourishment_menu_taxburden[:, i] = amort * (
+                    mmt._nourishment_menu_add_tax[i] * (1 - I_OF) * A_NOF._price[t - 1] + mmt._taxratio_OF *
+                    mmt._nourishment_menu_add_tax[i] * I_OF * A_OF._price[t - 1])
+
+    return mmt
 
 
-def evaluate_nourishment_plans(chome, agents_back_row, agents_front_row, BPB, BPC):
+def calculate_nourishment_plan_ben(time_index, A_OF, A_NOF, mmt, ACOM):
+    t = time_index
+    A_NOF_copy = copy.deepcopy(A_NOF)
+    A_OF_copy = copy.deepcopy(A_OF)
+    tau_prop_NOF = np.zeros(1)
+    tau_prop_OF = np.zeros(1)
 
-    return MMT
+    for nourishment_interval in range(0, 11):
+        i = nourishment_interval
+        mbw = np.mean(mmt._nourishment_menu_bw[i, :])
+        A_NOF_copy._wtp = A_NOF._WTP_base+A_NOF._WTP_alph*mbw**A_NOF._bta
+        A_OF_copy._wtp = A_OF._WTP_base+A_OF._WTP_alph*mbw**A_OF._bta
+        tau_prop_NOF[0]=A_NOF_copy._tau_prop[t+1] + mmt._nourishment_menu_add_tax[i]
+        tau_prop_OF[0]=A_OF_copy._tau_prop[t+1] + mmt._nourishment_menu_add_tax[i]*mmt._taxratio_OF
+        A_NOF_copy = calculate_user_cost(time_index, A_NOF_copy, tau_prop_NOF)
+        A_OF_copy = calculate_user_cost(time_index, A_OF_copy, tau_prop_OF)
+        mmt._OF_plan_price[i] = A_OF_copy._price[t]
+        mmt._NOF_plan_price[i] = A_NOF_copy._price[t]
+
+    for i in range(0,11):
+        mmt._nourishment_pricelist[0:ACOM._n_NOF,i] = mmt._NOF_plan_price[i]
+        mmt._nourishment_pricelist[ACOM._n_NOF+1:-1,i] = mmt._OF_plan_price[i]
+
+    return mmt
 
 
-def calculate_evaluate_dunes(chome, agents_back_row, agents_front_row, MMT):
+def evaluate_nourishment_plans(time_index, mmt, A_OF, A_NOF, ACOM):
+    t = time_index
+    price_increase = np.zeros(1)
+    vote = np.zeros(shape=(ACOM._n_agent_total, 10))
+    schedule_conflict = np.zeros(10)
+    nourish_schedule = np.matlib.repmat(mmt._nourishtime[t + 1:t + mmt._nourish_plan_horizon + 1], 11, 1)
 
-    return MMT
+    for j in range(0, 10):
+        nindx = np.arange(1, mmt._nourish_plan_horizon + 1, j + 1)
+        nourish_schedule[j, nindx - 1] = nourish_schedule[j, nindx - 1] + 1
+
+        num_scheduling_conflicts = np.nonzero(nourish_schedule[j, :])
+        if np.size(num_scheduling_conflicts) > 0:
+            schedule_conflict[j] = 1
+
+        catch_back2back_nourishplans = nourish_schedule[j, 0:-1] + nourish_schedule[j, 1:]
+        back2back_scheduling_conflicts = np.nonzero(catch_back2back_nourishplans)
+        if np.size(back2back_scheduling_conflicts) > 0:
+            schedule_conflict[j] = 1
+
+        # catch_back2back_nourishplans = nourish_schedule(j,1:end-2)+nourish_schedule(j,2:end-1)+nourish_schedule(j,3:end);
+        # if numel(find(catch_back2back_nourishplans>1))>0
+        #    schedule_conflict(j) = 1;
+        # end
+
+        if t > 5:
+            if np.sum(mmt._nourishtime[t - 3:t]) > 0:
+                schedule_conflict[j] = 1
+
+    for j in range(0, 10):
+        for i in range(0, ACOM._n_agent_total):
+            if ACOM._I_own[i] == 1 and schedule_conflict[j] == 0:
+                price_increase = mmt._nourishment_pricelist[i, j] - mmt._nourishment_pricelist[i, 10]
+                if mmt._nourishment_menu_taxburden[i, j] < price_increase:
+                    vote[i, j] = 1
+
+    tally_vote = np.zeros(10)
+    for j in range(0, 10):
+        tally_vote[j] = np.sum(vote[:, j]) / np.sum(ACOM._I_own)
+
+    tally_vote[0] = 0
+    tally_vote[9] = 0
+    voter_choice = np.argwhere(tally_vote > 0.5)
+
+    if mmt._nourishtime[t] == 1 or np.size(voter_choice) == 0:
+        voter_choice = 10
+
+    # if nourishment_off:
+    #    voter_choice = 10
+
+    if voter_choice == 10:
+        mmt._newplan[t + 1] = 0
+
+    if np.size(voter_choice) == 1 and voter_choice != 10:
+        mmt._newplan[t + 1] = 1
+        mmt._nourishtime[t + 1:t + mmt._nourish_plan_horizon + 1] = nourish_schedule[voter_choice, :]
+        if mmt._nourishment_menu_add_tax[voter_choice] > 0:
+            mmt._nourishment_menu_add_tax[voter_choice] = 0
+        A_NOF._tau_prop[t + 1:t + mmt._amort + 1] = A_NOF._tau_prop[t + 1:t + mmt._amort + 1] + mmt._nourishment_menu_add_tax[voter_choice]
+        A_OF._tau_prop[t + 1:t + mmt._amort + 1] = A_OF._tau_prop[t + 1:t + mmt._amort + 1] + mmt._taxratio_OF * mmt._nourishment_menu_add_tax[voter_choice]
+
+    if np.size(voter_choice) > 1 and voter_choice != 10:
+        voter_choice = voter_choice[-1]
+        mmt._newplan[t + 1] = 1
+        if mmt._nourishment_menu_add_tax[voter_choice] > 0:
+            mmt._nourishment_menu_add_tax[voter_choice] = 0
+        A_NOF._tau_prop[t + 1:t + mmt._amort + 1] = A_NOF._tau_prop[t + 1:t + mmt._amort + 1] + mmt._nourishment_menu_add_tax[voter_choice]
+        A_OF._tau_prop[t + 1:t + mmt._amort + 1] = A_OF._tau_prop[t + 1:t + mmt._amort + 1] + mmt._taxratio_OF * mmt._nourishment_menu_add_tax[voter_choice]
+
+    return A_NOF, A_OF, mmt
+
+# def calculate_evaluate_dunes(chome, agents_back_row, agents_front_row, mmt):
+#     return mmt

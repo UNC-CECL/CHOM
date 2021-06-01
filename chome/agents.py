@@ -17,10 +17,11 @@ Notes
 """
 
 import numpy as np
-from copulas.multivariate import GaussianMultivariate
+# from copulas.multivariate import GaussianMultivariate
 from scipy.stats import beta
 from scipy.stats import norm  # contains PDF of Gaussian
 from scipy.stats import multivariate_normal
+from .user_cost import calculate_risk_premium
 
 
 def agent_distribution(
@@ -42,8 +43,6 @@ def agent_distribution(
     bline2 = -1 * (beta_max - beta_min) * beta_x + beta_max
     bline1 = (beta_max - beta_min) * beta_x + beta_min
 
-    # covariances (KA: are these linear correlation parameters?)
-    #              ZW: yep
     r12 = rcov
     r13 = rcov
     r14 = rcov
@@ -51,16 +50,16 @@ def agent_distribution(
     r24 = rcov
     r34 = rcov
 
-    Rho = np.array(
+    rho = np.array(
         [[1, r12, r13, r14], [r12, 1, r23, r24], [r13, r23, 1, r34], [r14, r24, r34, 1]]
     )
     # U = copularnd('Gaussian', Rho, n);
     #  gaussian copula is based on the Gaussian Multivariate distribution
     # ZW - I'm looking into this - matlab gives a different output from "copularnd" (confined to interval 0 to 1)
     #     since np.random.multivariate_normal produces values outside [0 1], the result is beta.ppf produces NaN for vals outside this range
-    size = Rho.shape[0]
+    size = rho.shape[0]
     means = np.zeros(size)
-    y = multivariate_normal(means, Rho)  # , size=n)
+    y = multivariate_normal(means, rho)  # , size=n)
     mvnData = y.rvs(size=n)
     U = norm.cdf(mvnData)
 
@@ -94,124 +93,133 @@ def agent_distribution(
     return tau_o, WTP_base, rp_base, WTP_alph
 
 
-def agent_distribution_adjust():
-    return
+def agent_distribution_adjust(time_index, M, A, ACOM, frontrow_on):
+    t = time_index
+    cutoff1 = 0.1
+    cutoff2 = 0.9
 
+    if frontrow_on:
+        P_e = M._P_e_OF
+    else:
+        P_e = M._P_e_NOF
+
+    if A._beta_x < cutoff1 and A._beta_x >= 0:
+        switching_speed = A._beta_x * (A._adjust_beta_x) / cutoff1
+
+    if A._beta_x > cutoff2 and A._beta_x <= 1:
+        switching_speed = -(A._adjust_beta_x / cutoff1) * A._beta_x + A._adjust_beta_x / cutoff1
+
+    if A._beta_x >= cutoff1 and A._beta_x <= cutoff2:
+        switching_speed = A._adjust_beta_x
+
+    dP_e = (P_e[t] - P_e[t - 1]) / P_e[t - 1]
+
+    if dP_e > 0:
+        A._range_WTP_base[1] = dP_e * A._range_WTP_base[1] + A._range_WTP_base[1]
+        A._range_WTP_alph[1] = dP_e * A._range_WTP_alph[1] + A._range_WTP_alph[1]
+
+    W = 1 / (1 + A._beta_x_feedbackparam * (A._price[t] - P_e[t]) ** 2)
+
+    A._beta_x = A._beta_x + W * switching_speed * (A._price[t] - P_e[t]) - (1 - W) * switching_speed * (P_e[t] - A._price[t])
+
+    if A._beta_x > 1:
+        A._beta_x = 1
+
+    if A._beta_x < 0:
+        A._beta_x = 0
+
+    [A._tau_o,
+    A._WTP_base,
+    A._rp_base,
+    A._WTP_alph,
+] = agent_distribution(
+    A._rcov,
+    A._range_WTP_base,
+    A._range_WTP_alph,
+    A._range_tau_o,
+    A._range_rp_base,
+    A._beta_x,
+    A._n,
+)
+
+    A = calculate_risk_premium(time_index, ACOM, A, M, frontrow_on)
+
+    return A
 
 class Agents:
     def __init__(
         self,
-        T=400,
-        n=2500,
-        bta=0.2,
-        m=0.003,  # which of these will be tuned for locations? keep here, otherwise, move below
-        delta=0.06,
-        # ZW: they won't all need to be upfront, but for initial model coupling I'll likely have to adjust some quite a bit, so lets keep them together for the time being
-        gam=0.01,
-        HV=1000,
-        rp_storm=0,
-        epsilon=1,
-        tau_c=0.2,
-        capgain_feedbackparam=1e-10,
-        beta_x_feedbackparam=1e-10,
-        adjust_beta_x=5e-8,
-        risk_to_EnvExptdGains=0.2,
-        frac_realist=0.75,
-        rcov=0.8,
-        env_risk_immediacy=0.2,
+        T,
+        n,
+        frontrow_on,
     ):
 
         """These variables were formerly contained in structures "A" and "X"
 
         Examples
         --------
-        >>> from agents import Agents
-        >>> agents_doing_thangs = Agents()
+
+        #>>> from agents import Agents
+        #>>> agents_doing_thangs = Agents()
 
         Parameters
         ----------
-        bta: float, optional
-            Hedonic beach width coefficient for oceanfront housing
-        m: float, optional
-            Additional investor-only fees of renting the propoerty (just investors)
-        delta: float, optional
-            Interest rate (same for investor and owner)
-        gam: float, optional
-            Depreciation rate on housing capital (same for investor and owner)
-        HV: int, optional
-            Annualized value of housing services (same for investor and owner)
-        rp_storm: int, optional
-            Coefficient to convert storm return interval to risk premium
-        epsilon: int, optional
-            Additional bid for investor
-        tau_c: float, optional
-            Corporate tax rate (just investors) -- U.S. federal rate (could add 2.5# for NC)
-        capgain_feedbackparam: float, optional
-            Feedback parameter for expected capital gains
-        beta_x_feedbackparam: int, optional
-            Feedback parameter for agent distribution fluxes, reacts to outside market price
-        adjust_beta_x: int, optional
-            Increment to adjust beta_x (agent distribution fluxes)
-        risk_to_EnvExptdGains: int, optional
-            Coefficient converting risk premium to an expected capital loss (applies only to I_realist=1)
-        frac_realist: int, optional
-            Total fraction of agents who consider internal system dyanmics to inform risk premia, and expected cap gains
-        rcov: int, optional
-            Covariance between agent income tax bracket, willingness to pay, and risk tolerance
-        env_risk_immediacy: int, optional
-            Determines how quickly people switch from abitrage to environmental risk in capital gains
+        # bta: float, optional
+        #     Hedonic beach width coefficient for oceanfront housing
+        # m: float, optional
+        #     Additional investor-only fees of renting the propoerty (just investors)
+        # delta: float, optional
+        #     Interest rate (same for investor and owner)
+        # gam: float, optional
+        #     Depreciation rate on housing capital (same for investor and owner)
+        # HV: int, optional
+        #     Annualized value of housing services (same for investor and owner)
+        # epsilon: int, optional
+        #     Additional bid for investor
+        # tau_c: float, optional
+        #     Corporate tax rate (just investors) -- U.S. federal rate (could add 2.5# for NC)
+        # beta_x_feedbackparam: int, optional
+        #     Feedback parameter for agent distribution fluxes, reacts to outside market price
+        # adjust_beta_x: int, optional
+        #     Increment to adjust beta_x (agent distribution fluxes)
+        # rcov: int, optional
+        #     Covariance between agent income tax bracket, willingness to pay, and risk tolerance
         """
 
         self._T = T
         self._n = n
-        self._bta = bta
-        self._m = m
-        self._delta = delta
-        self._gam = gam
-        self._HV = HV
-        self._rp_storm = rp_storm
-        self._epsilon = epsilon
-        self._tau_c = tau_c
-        self._capgain_feedbackparam = capgain_feedbackparam
-        self._beta_x_feedbackparam = beta_x_feedbackparam
-        self._adjust_beta_x = adjust_beta_x
-        self._risk_to_EnvExptdGains = risk_to_EnvExptdGains
-        self._frac_realist = frac_realist
-        self._rcov = rcov
-        self._env_risk_immediacy = env_risk_immediacy
+        self._m = 2000
+        self._delta = 0.06
+        self._gam = 0.01
+        self._HV = 30000
+        self._epsilon = 1
+        self._tau_c = 0.2
+        self._beta_x_feedbackparam = 1e-7
+        self._adjust_beta_x = 1e-7
+        self._rcov = 0.8
 
         RNG = np.random.default_rng(
             seed=self._n
         )  # KA: added seeded random number generator the size of n
 
         # owner agent
-        if self._bta == 2:
-            # base willingness to pay distribution bounds
+        if frontrow_on:
             self._range_WTP_base = [5000, 35000]
             self._range_WTP_alph = [5000, 35000]
-            self._range_tau_o = [0.0, 0.35]  # income tax bracket (0 to 0.37)
+            self._range_tau_o = [0.05, 0.37]
+            self._beta_x = 0.2
+            self._bta = 0.2
         else:
-            self._range_WTP_base = [5000, 25000]
-            self._range_WTP_alph = [5000, 25000]
-            self._range_tau_o = [0.0, 0.35]
+            self._range_WTP_base = [5000, 35000]
+            self._range_WTP_alph = [5000, 35000]
+            self._range_tau_o = [0.05, 0.37]
+            self._bta = 0.1
+            self._beta_x = 0.2
 
-        if self._bta == 0.2:
-            # base risk premium distribution - random distribution of shifts to base risk premium
-            self._range_rp_base = [-0.03, 0.03]
-        else:
-            self._range_rp_base = [0, 0.03]
-
-        # average risk premium real estate (same for investor and owner)
+        self._range_rp_base = [0.25, 1.25]
         self._rp_I = np.zeros(1)
         self._rp_o = np.zeros(self._n)
-
-        # base property tax rate (same for investor and owner)
         self._tau_prop = 0.01 * np.ones(self._T)
-
-        if bta == 2:
-            self._beta_x = 0.4
-        else:
-            self._beta_x = 0.4
 
         [
             self._tau_o,
@@ -230,18 +238,14 @@ class Agents:
 
         self._rp_base_sorted = np.sort(self._rp_base)
         self._I = np.argsort(self._rp_base)
-
-        self._I_realist = np.zeros(len(self._rp_base))
-        self._I_realist[
-            self._I[-1 - round(len(self._rp_base) * self._frac_realist) + 1 : -1]
-        ] = 1  # KA -- make sure this matches matlab re: indices (ZW -- this is correct)
-        self._g_I = 0.01
-        self._g_o = 0.04 * RNG.standard_normal(self._n)  # randn(n,1)
+        self._g_I = 0
+        self._g_o = np.zeros(self._n)
         self._price = np.zeros(self._T)
         self._rent = np.zeros(self._T)
         self._mkt = np.zeros(self._T)
+        self._wtp = np.zeros(self._n)
 
-        if self._bta >= 0.2:
+        if frontrow_on:
             self._price[0] = 6e5
             self._rent[0] = 1e5
         else:
