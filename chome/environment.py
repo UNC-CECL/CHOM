@@ -2,72 +2,78 @@ import numpy as np
 import copy as copy
 
 
-def evolve_environment(time_index, acom, mmt, m):
+def evolve_environment(time_index, agentsame, mgmt, modelforcing):
     t = time_index
 
-    if mmt._nourishtime[t] == 1:  # if nourish is scheduled
-        mmt._bw[t] = mmt._x0
-        acom._E_ER[t] = (
-            acom._theta_er * m._ER[t] + (1 - acom._theta_er) * acom._E_ER[t - 1]
+    if mgmt._nourishtime[t] == 1:  # if nourish is scheduled
+        mgmt._bw[t] = mgmt._x0
+        agentsame._E_ER[t] = (
+            agentsame._theta_er * modelforcing._ER[t]
+            + (1 - agentsame._theta_er) * agentsame._E_ER[t - 1]
         )
     else:
-        mmt._bw[t] = mmt._bw[t - 1] - m._ER[t]
-        acom._E_ER[t] = (
-            acom._theta_er * m._ER[t] + (1 - acom._theta_er) * acom._E_ER[t - 1]
+        mgmt._bw[t] = mgmt._bw[t - 1] - modelforcing._ER[t]
+        agentsame._E_ER[t] = (
+            agentsame._theta_er * modelforcing._ER[t]
+            + (1 - agentsame._theta_er) * agentsame._E_ER[t - 1]
         )
 
-    if mmt._builddunetime[t] == 1:  # if dune build is scheduled
-        mmt._h_dune[t] = mmt._h0  # then build it back up
+    if mgmt._builddunetime[t] == 1:  # if dune build is scheduled
+        mgmt._h_dune[t] = mgmt._h0  # then build it back up
     else:
-        mmt._h_dune[t] = mmt._h_dune[t - 1] - 0.2
+        mgmt._h_dune[t] = mgmt._h_dune[t - 1] - 0.2
 
-    if mmt._bw[t] < 1:
-        mmt._bw[t] = 1
+    if mgmt._bw[t] < 1:
+        mgmt._bw[t] = 1
 
-    if mmt._h_dune[t] < 0.1:
-        mmt._h_dune[t] = 0.1
+    if mgmt._h_dune[t] < 0.1:
+        mgmt._h_dune[t] = 0.1
 
-    return mmt, acom
+    return mgmt, agentsame
 
 
-def calculate_expected_dune_height(time_index, acom, mmt):
+def calculate_expected_dune_height(time_index, agentsame, mgmt):
     t = time_index
-    expectation_horizon = mmt._expectation_horizon
+    expectation_horizon = mgmt._expectation_horizon
     if t > expectation_horizon:
-        acom._Edh[t] = np.mean(mmt._h_dune[t - (expectation_horizon - 1) : t])
+        agentsame._Edh[t] = np.mean(mgmt._h_dune[t - (expectation_horizon - 1) : t+1])
     else:
-        acom._Edh[t] = np.mean(mmt._h_dune[0:t])
-    return acom
+        agentsame._Edh[t] = np.mean(mgmt._h_dune[0:t+1])
+    return agentsame
 
 
-def calculate_expected_beach_width(time_index, mmt, acom, a_of, a_nof):
+def calculate_expected_beach_width(time_index, mgmt, agentsame, agent_of, agent_nof):
     t = time_index
-    exp_bw = copy.deepcopy(mmt._bw)
-    bw_back = np.zeros(t + mmt._nourish_plan_horizon)
+    exp_bw = copy.deepcopy(mgmt._bw)
+    bw_back = np.zeros(t + mgmt._nourish_plan_horizon)
 
-    for time in range(t + 1, t + mmt._nourish_plan_horizon):
-        if mmt._nourishtime[time] == 1:
-            exp_bw[time] = mmt._x0
+    for time in range(t + 1, t + mgmt._nourish_plan_horizon):
+        if mgmt._nourishtime[time] == 1:
+            exp_bw[time] = mgmt._x0
         else:
-            exp_bw[time] = exp_bw[time - 1] - acom._E_ER[t]
+            exp_bw[time] = exp_bw[time - 1] - agentsame._E_ER[t]
 
     exp_bw[exp_bw < 1] = 1
     ind = 0
 
-    if t > mmt._expectation_horizon:
-        for time in range(t + 1, t + mmt._nourish_plan_horizon):
+    if t > mgmt._expectation_horizon:
+        for time in range(t + 1, t + mgmt._nourish_plan_horizon):
             bw_back[ind] = np.average(
-                exp_bw[time - (mmt._expectation_horizon - 1) : time]
+                exp_bw[time - (mgmt._expectation_horizon - 1) : time]
             )
             ind += 1
     else:
-        for time in range(t + 1, t + mmt._nourish_plan_horizon):
-            bw_back[ind] = np.average(exp_bw[time - t : time])
+        for time in range(t + 1, t + mgmt._nourish_plan_horizon):
+            bw_back[ind] = np.average(exp_bw[0 : time])
             ind += 1
-    acom._Ebw[t] = np.mean(bw_back)
+    agentsame._Ebw[t] = np.mean(bw_back[0:ind])
 
     # expected willingness to pay
-    a_nof._wtp = a_nof._WTP_base + a_nof._WTP_alph * acom._Ebw[t] ** a_nof._bta
-    a_of._wtp = a_of._WTP_base + a_of._WTP_alph * acom._Ebw[t] ** a_of._bta
+    agent_nof._wtp = (
+        agent_nof._WTP_base + agent_nof._WTP_alph * agentsame._Ebw[t] ** agent_nof._bta
+    )
+    agent_of._wtp = (
+        agent_of._WTP_base + agent_of._WTP_alph * agentsame._Ebw[t] ** agent_of._bta
+    )
 
-    return acom, a_nof, a_of
+    return agentsame, agent_nof, agent_of

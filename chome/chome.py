@@ -26,7 +26,7 @@ class Chome:
     def __init__(
         self,
         name="default",
-        total_number_of_agents=2500,
+        total_number_of_agents=1000,
         agent_expectations_time_horizon=30,
         agent_erosion_update_weight=0.5,
         barrier_island_height=1,
@@ -39,16 +39,16 @@ class Chome:
         dune_height_build=4,
         external_housing_market_value_oceanfront=6e5,
         external_housing_market_value_nonoceanfront=4e5,
-        fixed_cost_beach_nourishment=3e6,
-        fixed_cost_dune_nourishment=1e6,
-        nourishment_cost_subsidy=12e6,
+        fixed_cost_beach_nourishment=2e6,
+        fixed_cost_dune_nourishment=2e5,
+        nourishment_cost_subsidy=10e6,
         nourishment_plan_loan_amortization_length=5,
         nourishment_plan_time_commitment=10,
-        share_oceanfront=0.25,
+        share_oceanfront=0.5,
         shoreline_retreat_rate=4,
         sand_cost=10,
         total_time=400,
-        taxratio_oceanfront=3,
+        taxratio_oceanfront=1,
     ):
         """Coastal Home Ownership Model CHOM
         Parameters
@@ -110,6 +110,7 @@ class Chome:
         self._n = total_number_of_agents
         # average risk premium real estate (same for investor and owner)
         self._nourishment_off = 0
+        self._increasing_outside_market = True
 
         ###############################################################################
         # share subsets of the variables in different classes for easy passing
@@ -119,14 +120,6 @@ class Chome:
             def __init__(self):
                 self._T = total_time + nourishment_plan_time_commitment
                 self._ER = shoreline_retreat_rate + np.zeros(self._T)
-                self._P_e_OF = external_housing_market_value_oceanfront + np.zeros(
-                    self._T
-                )
-                self._P_e_NOF = external_housing_market_value_nonoceanfront + np.zeros(
-                    self._T
-                )
-                # KA: added seeded random number generator the size of n
-                # Znote: since i removed storms, should be okay to remove RNG now ya?
                 self._RNG = np.random.default_rng(seed=total_number_of_agents)
                 self._Tfinal = self._T - nourishment_plan_time_commitment
                 self._barr_elev = barrier_island_height
@@ -189,12 +182,10 @@ class Chome:
                 self._I_OF = np.zeros(
                     self._n_agent_total
                 )  # the first n_NOF spots are back row, remaining are front row
-                self._I_OF[self._n_NOF + 1 : -1] = 1
+                self._I_OF[self._n_NOF + 1:] = 1
                 self._I_own = np.zeros(self._n_agent_total)
-
-        self._M = ModelParameters()
-        self._MMT = ManagementParameters()
-        self._ACOM = AgentCommon()
+                self._P_e_OF = external_housing_market_value_oceanfront
+                self._P_e_NOF = external_housing_market_value_nonoceanfront
 
         class VariableSave:
             def __init__(self):
@@ -212,6 +203,9 @@ class Chome:
                 # self._nof_owner_bid_prices = np.zeros(shape=(total_number_of_agents, total_time))
                 # self._nourishment_cost_minus_ben = np.zeros(total_time)
 
+        self._modelforcing = ModelParameters()
+        self._mgmt = ManagementParameters()
+        self._agentsame = AgentCommon()
         self._savevar = VariableSave()
 
         ###############################################################################
@@ -219,15 +213,19 @@ class Chome:
         ###############################################################################
 
         # define the front row homes
-        self._A_OF = Agents(  # also includes former X_OF variables
+        self._agent_oceanfront = Agents(  # also includes former X_OF variables
             total_time,
-            self._ACOM._n_OF,
+            self._agentsame._n_OF,
+            self._agentsame,
+            self._increasing_outside_market,
             frontrow_on=True,
         )
         # define the back row homes
-        self._A_NOF = Agents(  # also includes former X_NOF variables
+        self._agent_nonoceanfront = Agents(  # also includes former X_NOF variables
             total_time,
-            self._ACOM._n_NOF,
+            self._agentsame._n_NOF,
+            self._agentsame,
+            self._increasing_outside_market,
             frontrow_on=False,
         )
 
@@ -237,116 +235,116 @@ class Chome:
         # Znote: I've re-written this to be simpler
         # number of NOF units owned by residents = n1, number of NOF units owned by investor = n_NOF - n1
         # number of OF  units owned by residents = n2, number of OF units  owned by investor = n_OF - n1
-        n1 = round(self._ACOM._n_NOF * (1 - self._A_NOF._mkt[self._time_index - 1]))
-        n2 = round(self._ACOM._n_OF * (1 - self._A_OF._mkt[self._time_index - 1]))
-        self._ACOM._I_own = np.zeros(self._ACOM._n_NOF + self._ACOM._n_OF)
-        nof_indices = np.arange(self._ACOM._n_NOF)
-        of_indices = self._ACOM._n_NOF + np.arange(self._ACOM._n_OF)
-        self._ACOM._I_own[nof_indices[0:n1]] = 1
-        self._ACOM._I_own[of_indices[0:n2]] = 1
+        n1 = round(self._agentsame._n_NOF * (1 - self._agent_nonoceanfront._mkt[self._time_index - 1]))
+        n2 = round(self._agentsame._n_OF * (1 - self._agent_oceanfront._mkt[self._time_index - 1]))
+        self._agentsame._I_own = np.zeros(self._agentsame._n_NOF + self._agentsame._n_OF)
+        nof_indices = np.arange(self._agentsame._n_NOF)
+        of_indices = self._agentsame._n_NOF + np.arange(self._agentsame._n_OF)
+        self._agentsame._I_own[nof_indices[0:n1]] = 1
+        self._agentsame._I_own[of_indices[0:n2]] = 1
 
-        [self._MMT, self._ACOM] = evolve_environment(
-            self._time_index, self._ACOM, self._MMT, self._M
+        [self._mgmt, self._agentsame] = evolve_environment(
+            self._time_index, self._agentsame, self._mgmt, self._modelforcing
         )
 
-        self._ACOM = calculate_expected_dune_height(
-            self._time_index, self._ACOM, self._MMT
+        self._agentsame = calculate_expected_dune_height(
+            self._time_index, self._agentsame, self._mgmt
         )
-        self._A_NOF = calculate_risk_premium(
+        self._agent_nonoceanfront = calculate_risk_premium(
             self._time_index,
-            self._ACOM,
-            self._A_NOF,
-            self._M,
+            self._agentsame,
+            self._agent_nonoceanfront,
+            self._modelforcing,
             frontrow_on=False,
         )
-        self._A_OF = calculate_risk_premium(
+        self._agent_oceanfront = calculate_risk_premium(
             self._time_index,
-            self._ACOM,
-            self._A_OF,
-            self._M,
+            self._agentsame,
+            self._agent_oceanfront,
+            self._modelforcing,
             frontrow_on=True,
         )
-        self._MMT = calculate_nourishment_plan_cost(
-            self._time_index, self._ACOM, self._MMT, self._A_NOF, self._A_OF
+        self._mgmt = calculate_nourishment_plan_cost(
+            self._time_index, self._agentsame, self._mgmt, self._agent_oceanfront, self._agent_nonoceanfront
         )
 
-        self._MMT = calculate_nourishment_plan_ben(
+        self._mgmt = calculate_nourishment_plan_ben(
             self._time_index,
-            self._A_OF,
-            self._A_NOF,
-            self._MMT,
-            self._ACOM,
+            self._agent_oceanfront,
+            self._agent_nonoceanfront,
+            self._mgmt,
+            self._agentsame,
         )
 
-        [self._A_NOF, self._A_OF, self._MMT] = evaluate_nourishment_plans(
-            self._time_index, self._MMT, self._A_OF, self._A_NOF, self._ACOM
+        [self._agent_nonoceanfront, self._agent_oceanfront, self._mgmt] = evaluate_nourishment_plans(
+            self._time_index, self._mgmt, self._agent_oceanfront, self._agent_nonoceanfront, self._agentsame
         )
 
-        [self._ACOM, self._A_NOF, self._A_OF] = calculate_expected_beach_width(
-            self._time_index, self._MMT, self._ACOM, self._A_OF, self._A_NOF
+        [self._agentsame, self._agent_nonoceanfront, self._agent_oceanfront] = calculate_expected_beach_width(
+            self._time_index, self._mgmt, self._agentsame, self._agent_oceanfront, self._agent_nonoceanfront
         )
 
-        [self._A_OF, self._A_NOF, self._MMT] = calculate_evaluate_dunes(
-            self._time_index, self._MMT, self._M, self._ACOM, self._A_OF, self._A_NOF
+        [self._agent_oceanfront, self._agent_nonoceanfront, self._mgmt] = calculate_evaluate_dunes(
+            self._time_index, self._mgmt, self._modelforcing, self._agentsame, self._agent_oceanfront, self._agent_nonoceanfront
         )
 
-        self._A_OF = expected_capital_gains(
+        self._agent_oceanfront = expected_capital_gains(
             self._time_index,
-            self._A_OF,
-            self._M,
+            self._agent_oceanfront,
+            self._modelforcing,
             frontrow_on=True,
         )
 
-        self._A_NOF = expected_capital_gains(
+        self._agent_nonoceanfront = expected_capital_gains(
             self._time_index,
-            self._A_NOF,
-            self._M,
+            self._agent_nonoceanfront,
+            self._modelforcing,
             frontrow_on=False,
         )
 
-        self._A_OF = calculate_user_cost(
+        self._agent_oceanfront = calculate_user_cost(
             self._time_index,
-            self._A_OF,
-            self._A_OF._tau_prop[self._time_index],
+            self._agent_oceanfront,
+            self._agent_oceanfront._tau_prop[self._time_index],
         )
 
-        self._A_NOF = calculate_user_cost(
+        self._agent_nonoceanfront = calculate_user_cost(
             self._time_index,
-            self._A_NOF,
-            self._A_NOF._tau_prop[self._time_index],
+            self._agent_nonoceanfront,
+            self._agent_nonoceanfront._tau_prop[self._time_index],
         )
 
-        self._A_OF = agent_distribution_adjust(
+        self._agent_oceanfront = agent_distribution_adjust(
             self._time_index,
-            self._M,
-            self._A_OF,
-            self._ACOM,
+            self._modelforcing,
+            self._agent_oceanfront,
+            self._agentsame,
             frontrow_on=True,
         )
 
-        self._A_NOF = agent_distribution_adjust(
+        self._agent_nonoceanfront = agent_distribution_adjust(
             self._time_index,
-            self._M,
-            self._A_NOF,
-            self._ACOM,
+            self._modelforcing,
+            self._agent_nonoceanfront,
+            self._agentsame,
             frontrow_on=False,
         )
 
         if self._time_index == 1:
-            self._A_OF._price[0] = self._A_OF._price[1]
-            self._A_NOF._price[0] = self._A_NOF._price[1]
+            self._agent_oceanfront._price[0] = self._agent_oceanfront._price[1]
+            self._agent_nonoceanfront._price[0] = self._agent_nonoceanfront._price[1]
 
-        self._savevar._of_beta_x[self._time_index] = self._A_OF._beta_x
-        self._savevar._of_income_distribution[:, self._time_index] = self._A_OF._tau_o
-        self._savevar._of_willingness_to_pay[:, self._time_index] = self._A_OF._wtp
-        self._savevar._of_risk_premium[:, self._time_index] = self._A_OF._rp_o
-        # self._savevar._of_owner_bid_prices[self._time_index]
-        self._savevar._nof_beta_x[self._time_index] = self._A_NOF._beta_x
-        self._savevar._nof_income_distribution[:, self._time_index] = self._A_NOF._tau_o
-        self._savevar._nof_willingness_to_pay[:, self._time_index] = self._A_NOF._wtp
-        self._savevar._nof_risk_premium[:, self._time_index] = self._A_NOF._rp_o
-        # self._savevar._nof_owner_bid_prices[self._time_index]
-        # self._savevar._nourishment_cost_minus_ben[self._time_index]
+        self._savevar._of_beta_x[self._time_index] = self._agent_oceanfront._beta_x
+        self._savevar._of_income_distribution[:, self._time_index] = self._agent_oceanfront._tau_o
+        self._savevar._of_willingness_to_pay[:, self._time_index] = self._agent_oceanfront._wtp
+        self._savevar._of_risk_premium[:, self._time_index] = self._agent_oceanfront._rp_o
+        # self._savevar._of_owner_bid_prices[time_index]
+        self._savevar._nof_beta_x[self._time_index] = self._agent_nonoceanfront._beta_x
+        self._savevar._nof_income_distribution[:, self._time_index] = self._agent_nonoceanfront._tau_o
+        self._savevar._nof_willingness_to_pay[:, self._time_index] = self._agent_nonoceanfront._wtp
+        self._savevar._nof_risk_premium[:, self._time_index] = self._agent_nonoceanfront._rp_o
+        # self._savevar._nof_owner_bid_prices[time_index]
+        # self._savevar._nourishment_cost_minus_ben[time_index]
 
         self._time_index += 1
 

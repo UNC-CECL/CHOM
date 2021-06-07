@@ -38,8 +38,8 @@ def agent_distribution(
     # dist = GaussianMultivariate()
     # sampled = dist.sample(1000)
 
-    beta_max = 10.5
-    beta_min = 2
+    beta_max = 10
+    beta_min = 0.5
 
     bline2 = -1 * (beta_max - beta_min) * beta_x + beta_max
     bline1 = (beta_max - beta_min) * beta_x + beta_min
@@ -47,7 +47,7 @@ def agent_distribution(
     r12 = rcov
     r13 = rcov
     r14 = rcov
-    r23 = 0.9
+    r23 = rcov
     r24 = rcov
     r34 = rcov
 
@@ -91,63 +91,70 @@ def agent_distribution(
     rp_base = rp_base * (range_rp_base[1] - range_rp_base[0])
     rp_base = rp_base + range_rp_base[0]
 
+    # tau_o = np.linspace(0.05, 0.25, n)
+    # WTP_base = np.linspace(range_WTP_base[1]*0.5 ,range_WTP_base[1] , n)
+    # WTP_alph = np.linspace(range_WTP_base[1]*0.5 , range_WTP_alph[1], n)
+    # rp_base = np.linspace(0.5, 1, n)
+
+
     return tau_o, WTP_base, rp_base, WTP_alph
 
 
-def agent_distribution_adjust(time_index, M, A, ACOM, frontrow_on):
+def agent_distribution_adjust(time_index, modelforcing, agent, agentsame, frontrow_on):
     t = time_index
     cutoff1 = 0.1
     cutoff2 = 0.9
 
     if frontrow_on:
-        P_e = M._P_e_OF
+        P_e = agent._P_e
     else:
-        P_e = M._P_e_NOF
+        P_e = agent._P_e
 
-    if A._beta_x < cutoff1 and A._beta_x >= 0:
-        switching_speed = A._beta_x * (A._adjust_beta_x) / cutoff1
 
-    if A._beta_x > cutoff2 and A._beta_x <= 1:
+    if agent._beta_x < cutoff1 and agent._beta_x >= 0:
+        switching_speed = agent._beta_x * (agent._adjust_beta_x) / cutoff1
+
+    if agent._beta_x > cutoff2 and agent._beta_x <= 1:
         switching_speed = (
-            -(A._adjust_beta_x / cutoff1) * A._beta_x + A._adjust_beta_x / cutoff1
+            -(agent._adjust_beta_x / cutoff1) * agent._beta_x + agent._adjust_beta_x / cutoff1
         )
 
-    if A._beta_x >= cutoff1 and A._beta_x <= cutoff2:
-        switching_speed = A._adjust_beta_x
+    if agent._beta_x >= cutoff1 and agent._beta_x <= cutoff2:
+        switching_speed = agent._adjust_beta_x
 
     dP_e = (P_e[t] - P_e[t - 1]) / P_e[t - 1]
 
     if dP_e > 0:
-        A._range_WTP_base[1] = dP_e * A._range_WTP_base[1] + A._range_WTP_base[1]
-        A._range_WTP_alph[1] = dP_e * A._range_WTP_alph[1] + A._range_WTP_alph[1]
+        agent._range_WTP_base[1] = dP_e * agent._range_WTP_base[1] + agent._range_WTP_base[1]
+        agent._range_WTP_alph[1] = dP_e * agent._range_WTP_alph[1] + agent._range_WTP_alph[1]
 
-    W = 1 / (1 + A._beta_x_feedbackparam * (A._price[t] - P_e[t]) ** 2)
+    W = 1 / (1 + agent._beta_x_feedbackparam * (agent._price[t] - P_e[t]) ** 2)
 
-    A._beta_x = (
-        A._beta_x
-        + W * switching_speed * (A._price[t] - P_e[t])
-        - (1 - W) * switching_speed * (P_e[t] - A._price[t])
+    agent._beta_x = (
+        agent._beta_x
+        + W * switching_speed * (agent._price[t] - P_e[t])
+        + (1 - W) * switching_speed * (P_e[t] - agent._price[t])
     )
 
-    if A._beta_x > 1:
-        A._beta_x = 1
+    if agent._beta_x > 1:
+        agent._beta_x = 1
 
-    if A._beta_x < 0:
-        A._beta_x = 0
+    if agent._beta_x < 0:
+        agent._beta_x = 0
 
-    [A._tau_o, A._WTP_base, A._rp_base, A._WTP_alph,] = agent_distribution(
-        A._rcov,
-        A._range_WTP_base,
-        A._range_WTP_alph,
-        A._range_tau_o,
-        A._range_rp_base,
-        A._beta_x,
-        A._n,
+    [agent._tau_o, agent._WTP_base, agent._rp_base, agent._WTP_alph,] = agent_distribution(
+        agent._rcov,
+        agent._range_WTP_base,
+        agent._range_WTP_alph,
+        agent._range_tau_o,
+        agent._range_rp_base,
+        agent._beta_x,
+        agent._n,
     )
 
-    A = calculate_risk_premium(time_index, ACOM, A, M, frontrow_on)
+    agent = calculate_risk_premium(time_index, agentsame, agent, modelforcing, frontrow_on)
 
-    return A
+    return agent
 
 
 class Agents:
@@ -155,10 +162,12 @@ class Agents:
         self,
         T,
         n,
+        agentsame,
+        increasing_outside_market,
         frontrow_on,
     ):
 
-        """These variables were formerly contained in structures "A" and "X"
+        """These variables were formerly contained in structures "agent" and "X"
 
         Examples
         --------
@@ -192,15 +201,15 @@ class Agents:
 
         self._T = T
         self._n = n
-        self._m = 2000
+        self._m = 1000
         self._delta = 0.06
         self._gam = 0.01
-        self._HV = 30000
+        self._HV = 25000
         self._epsilon = 1
         self._tau_c = 0.2
         self._beta_x_feedbackparam = 1e-7
-        self._adjust_beta_x = 1e-7
-        self._rcov = 0.8
+        self._adjust_beta_x = 1e-8
+        self._rcov = 0.9
 
         RNG = np.random.default_rng(
             seed=self._n
@@ -211,14 +220,25 @@ class Agents:
             self._range_WTP_base = [5000, 35000]
             self._range_WTP_alph = [5000, 35000]
             self._range_tau_o = [0.05, 0.37]
-            self._beta_x = 0.2
+            self._beta_x = 0.6
             self._bta = 0.2
+            if increasing_outside_market:
+                self._P_e = np.linspace(agentsame._P_e_OF,
+                                                      3 * agentsame._P_e_OF, self._T)
+            else:
+                self._P_e = agentsame._P_e_OF * np.ones(self._T)
+
         else:
             self._range_WTP_base = [5000, 35000]
             self._range_WTP_alph = [5000, 35000]
             self._range_tau_o = [0.05, 0.37]
+            self._beta_x = 0.38
             self._bta = 0.1
-            self._beta_x = 0.2
+            if increasing_outside_market:
+                self._P_e = np.linspace(agentsame._P_e_NOF,
+                                                       3 * agentsame._P_e_NOF, self._T)
+            else:
+                self._P_e = agentsame._P_e_NOF * np.ones(self._T)
 
         self._range_rp_base = [0.25, 1.25]
         self._rp_I = np.zeros(1)
@@ -251,11 +271,11 @@ class Agents:
 
         if frontrow_on:
             self._price[0] = 6e5
-            self._rent[0] = 1e5
+            self._rent[0] = 0
         else:
             self._price[0] = 4e5
-            self._rent[0] = 1e5
-        self._mkt[0] = 0.4
+            self._rent[0] = 0
+        self._mkt[0] = 0
 
     @property
     def mkt(self):
