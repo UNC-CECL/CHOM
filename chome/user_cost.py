@@ -40,7 +40,12 @@ def calculate_user_cost(time_index, agent, tau_prop):
     vacancies = np.zeros(agent._n)
 
     R = agent._wtp + agent._HV
-    P_o = R / ((agent._delta + tau_prop) * (1 - agent._tau_o) + agent._gam + agent._rp_o - agent._g_o)
+    P_o = R / (
+        (agent._delta + tau_prop) * (1 - agent._tau_o)
+        + agent._gam
+        + agent._rp_o
+        - agent._g_o
+    )
     owner_info = np.column_stack((P_o, R))
     owner_info = owner_info[np.argsort(owner_info[:, 0])]
 
@@ -48,7 +53,12 @@ def calculate_user_cost(time_index, agent, tau_prop):
         P_bid = owner_info[i, 0] + agent._epsilon
         R_i = (
             P_bid
-            * ((agent._delta + tau_prop) * (1 - agent._tau_c) + agent._gam + agent._rp_I - agent._g_I)
+            * (
+                (agent._delta + tau_prop) * (1 - agent._tau_c)
+                + agent._gam
+                + agent._rp_I
+                - agent._g_I
+            )
             - agent._m
         )
 

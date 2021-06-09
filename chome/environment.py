@@ -36,9 +36,9 @@ def calculate_expected_dune_height(time_index, agentsame, mgmt):
     t = time_index
     expectation_horizon = mgmt._expectation_horizon
     if t > expectation_horizon:
-        agentsame._Edh[t] = np.mean(mgmt._h_dune[t - (expectation_horizon - 1) : t+1])
+        agentsame._Edh[t] = np.mean(mgmt._h_dune[t - (expectation_horizon - 1) : t + 1])
     else:
-        agentsame._Edh[t] = np.mean(mgmt._h_dune[0:t+1])
+        agentsame._Edh[t] = np.mean(mgmt._h_dune[0 : t + 1])
     return agentsame
 
 
@@ -64,7 +64,7 @@ def calculate_expected_beach_width(time_index, mgmt, agentsame, agent_of, agent_
             ind += 1
     else:
         for time in range(t + 1, t + mgmt._nourish_plan_horizon):
-            bw_back[ind] = np.average(exp_bw[0 : time])
+            bw_back[ind] = np.average(exp_bw[0:time])
             ind += 1
     agentsame._Ebw[t] = np.mean(bw_back[0:ind])
 

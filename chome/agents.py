@@ -96,7 +96,6 @@ def agent_distribution(
     # WTP_alph = np.linspace(range_WTP_base[1]*0.5 , range_WTP_alph[1], n)
     # rp_base = np.linspace(0.5, 1, n)
 
-
     return tau_o, WTP_base, rp_base, WTP_alph
 
 
@@ -110,13 +109,13 @@ def agent_distribution_adjust(time_index, modelforcing, agent, agentsame, frontr
     else:
         P_e = agent._P_e
 
-
     if agent._beta_x < cutoff1 and agent._beta_x >= 0:
         switching_speed = agent._beta_x * (agent._adjust_beta_x) / cutoff1
 
     if agent._beta_x > cutoff2 and agent._beta_x <= 1:
         switching_speed = (
-            -(agent._adjust_beta_x / cutoff1) * agent._beta_x + agent._adjust_beta_x / cutoff1
+            -(agent._adjust_beta_x / cutoff1) * agent._beta_x
+            + agent._adjust_beta_x / cutoff1
         )
 
     if agent._beta_x >= cutoff1 and agent._beta_x <= cutoff2:
@@ -125,8 +124,12 @@ def agent_distribution_adjust(time_index, modelforcing, agent, agentsame, frontr
     dP_e = (P_e[t] - P_e[t - 1]) / P_e[t - 1]
 
     if dP_e > 0:
-        agent._range_WTP_base[1] = dP_e * agent._range_WTP_base[1] + agent._range_WTP_base[1]
-        agent._range_WTP_alph[1] = dP_e * agent._range_WTP_alph[1] + agent._range_WTP_alph[1]
+        agent._range_WTP_base[1] = (
+            dP_e * agent._range_WTP_base[1] + agent._range_WTP_base[1]
+        )
+        agent._range_WTP_alph[1] = (
+            dP_e * agent._range_WTP_alph[1] + agent._range_WTP_alph[1]
+        )
 
     W = 1 / (1 + agent._beta_x_feedbackparam * (agent._price[t] - P_e[t]) ** 2)
 
@@ -142,7 +145,12 @@ def agent_distribution_adjust(time_index, modelforcing, agent, agentsame, frontr
     if agent._beta_x < 0:
         agent._beta_x = 0
 
-    [agent._tau_o, agent._WTP_base, agent._rp_base, agent._WTP_alph,] = agent_distribution(
+    [
+        agent._tau_o,
+        agent._WTP_base,
+        agent._rp_base,
+        agent._WTP_alph,
+    ] = agent_distribution(
         agent._rcov,
         agent._range_WTP_base,
         agent._range_WTP_alph,
@@ -152,7 +160,9 @@ def agent_distribution_adjust(time_index, modelforcing, agent, agentsame, frontr
         agent._n,
     )
 
-    agent = calculate_risk_premium(time_index, agentsame, agent, modelforcing, frontrow_on)
+    agent = calculate_risk_premium(
+        time_index, agentsame, agent, modelforcing, frontrow_on
+    )
 
     return agent
 
@@ -223,8 +233,9 @@ class Agents:
             self._beta_x = 0.6
             self._bta = 0.2
             if increasing_outside_market:
-                self._P_e = np.linspace(agentsame._P_e_OF,
-                                                      3 * agentsame._P_e_OF, self._T)
+                self._P_e = np.linspace(
+                    agentsame._P_e_OF, 3 * agentsame._P_e_OF, self._T
+                )
             else:
                 self._P_e = agentsame._P_e_OF * np.ones(self._T)
 
@@ -235,8 +246,9 @@ class Agents:
             self._beta_x = 0.38
             self._bta = 0.1
             if increasing_outside_market:
-                self._P_e = np.linspace(agentsame._P_e_NOF,
-                                                       3 * agentsame._P_e_NOF, self._T)
+                self._P_e = np.linspace(
+                    agentsame._P_e_NOF, 3 * agentsame._P_e_NOF, self._T
+                )
             else:
                 self._P_e = agentsame._P_e_NOF * np.ones(self._T)
 
