@@ -79,7 +79,7 @@ class Chome:
             Subsidy on cost of entire nourishment plan
         external_housing_market_value_oceanfront:  , optional
             Value of comparable housing option outside the coastal system
-        exter nal_housing_market_value_nonoceanfront:  , optional
+        external_housing_market_value_nonoceanfront:  , optional
             Value of comparable housing option outside the coastal system
         agent_expectations_time_horizon: int, optional
             Time horizon into past over which agent's consider physical environment
@@ -101,8 +101,8 @@ class Chome:
             Height of barrier island (meters) with respect to fixed reference point
         Examples
         --------
-        # >>> from chome import Chome
-        # >>> chome = Chome()
+        >>> from chome import Chome
+        >>> chome = Chome()
         """
 
         self._name = name
@@ -351,3 +351,11 @@ class Chome:
     @property
     def time_index(self):
         return self._time_index
+
+    @property
+    def barr_elev(self):
+        return self._modelforcing._barr_elev
+
+    @barr_elev.setter
+    def barr_elev(self, value):
+        self._modelforcing._barr_elev = value
