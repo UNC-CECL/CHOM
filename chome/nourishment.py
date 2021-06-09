@@ -103,9 +103,6 @@ def calculate_nourishment_plan_cost(
         varcost = namount / (((1 + delta) ** nourish_yr))
         maxplan = np.argwhere(nourish_yr > 11)  # only consider costs over next 10 years
         maxplan = maxplan[0, 0]
-        mgmt._nourishment_menu_volumes[i, nourish_yr[0:maxplan]] = (
-            namount[0:maxplan] / sandcost
-        )
         mgmt._nourishment_menu_cost[i] = (
             np.sum(fcost[0:maxplan])
             + np.sum(varcost[0:maxplan])
