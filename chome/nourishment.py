@@ -16,7 +16,7 @@ def evaluate_nourishment_future_beach_width(
         bw_future[0] = mgmt._x0
         nourish_xshore = np.zeros(t_horiz)
         nourishplan_new = np.zeros(t_horiz)
-        nourishplan_last = mgmt._nourishtime[t + 1: t + t_horiz + 1]
+        nourishplan_last = mgmt._nourishtime[t + 1 : t + t_horiz + 1]
         nourish_times = np.arange(0, t_horiz, nourish_interval)
         nourishplan_new[nourish_times] = 1
         nourish_count = nourishplan_last + nourishplan_new
@@ -24,7 +24,7 @@ def evaluate_nourishment_future_beach_width(
         bw_future[0] = mgmt._bw[t]
         nourish_xshore = np.zeros(t_horiz)
         nourishplan_new = np.zeros(t_horiz)
-        nourishplan_last = mgmt._nourishtime[t + 1: t + t_horiz + 1]
+        nourishplan_last = mgmt._nourishtime[t + 1 : t + t_horiz + 1]
         nourish_times = np.zeros(t_horiz)
         nourish_count = nourishplan_last
 
@@ -32,7 +32,9 @@ def evaluate_nourishment_future_beach_width(
         for time in range(1, t_horiz):
             if nourish_count[time] == 1 and time + 1 < t_horiz:
                 bw_future[time] = mgmt._x0
-                nourish_xshore[time] = mgmt._x0 - (bw_future[time - 1] - agentsame._E_ER[t])
+                nourish_xshore[time] = mgmt._x0 - (
+                    bw_future[time - 1] - agentsame._E_ER[t]
+                )
             elif nourish_count[time] == 2:
                 bw_future[time] = mgmt._x0
             else:
@@ -78,58 +80,94 @@ def calculate_nourishment_plan_cost(time_index, agentsame, mgmt, agent_of, agent
     # the case of no nourishment is indexed by 10
     for nourish_interval in range(0, 10):
         i = nourish_interval
-        [bw_future, nourish_xshore, nourish_yr] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, i + 1)
+        [
+            bw_future,
+            nourish_xshore,
+            nourish_yr,
+        ] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, i + 1)
         nourish_yr = nourish_yr + 1
         fcost = (fixedcost) / ((1 + delta) ** nourish_yr)
         namount = nourish_xshore * Ddepth * Llength * sandcost
         varcost = namount / (((1 + delta) ** nourish_yr))
         maxplan = np.argwhere(nourish_yr > 11)  # only consider costs over next 10 years
         maxplan = maxplan[0, 0]
-        mgmt._nourishment_menu_cost[i] = (np.sum(fcost[0:maxplan]) + np.sum(varcost[0:maxplan]) - mgmt._nourish_subsidy)
+        mgmt._nourishment_menu_cost[i] = (
+            np.sum(fcost[0:maxplan])
+            + np.sum(varcost[0:maxplan])
+            - mgmt._nourish_subsidy
+        )
         if t > 30:
             bw_past_and_future = np.concatenate((mgmt._bw[0 : t + 1], bw_future))
             ind = 0
             for t2 in range(t + 1, t + expectation_horizon + 1):
-                mgmt._nourishment_menu_bw[i, ind] = np.average(bw_past_and_future[t2 - (expectation_horizon - 1) : t2 + 1])
+                mgmt._nourishment_menu_bw[i, ind] = np.average(
+                    bw_past_and_future[t2 - (expectation_horizon - 1) : t2 + 1]
+                )
                 ind += 1
         else:
             bw_past_and_future = np.concatenate((mgmt._bw[0 : t + 1], bw_future))
             ind = 0
             for t2 in range(t + 1, t + expectation_horizon + 1):
-                mgmt._nourishment_menu_bw[i, ind] = np.average(bw_past_and_future[t2 - (t - 1) - 1 : t2 + 1])
+                mgmt._nourishment_menu_bw[i, ind] = np.average(
+                    bw_past_and_future[t2 - (t - 1) - 1 : t2 + 1]
+                )
                 ind += 1
 
-        mgmt._nourishment_menu_totalcostperyear[i] = (mgmt._nourishment_menu_cost[i] * delta * (1 + delta) ** amort / ((1 + delta) ** amort - 1))
+        mgmt._nourishment_menu_totalcostperyear[i] = (
+            mgmt._nourishment_menu_cost[i]
+            * delta
+            * (1 + delta) ** amort
+            / ((1 + delta) ** amort - 1)
+        )
 
     # no nourishment case
     nourish_interval = 10
     i = nourish_interval
-    [bw_future, nourish_xshore, nourish_yr] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, nourish_interval + 1)
+    [bw_future, nourish_xshore, nourish_yr] = evaluate_nourishment_future_beach_width(
+        time_index, mgmt, agentsame, nourish_interval + 1
+    )
     mgmt._nourishment_menu_cost[i] = 0
 
     if t > 30:
         bw_past_and_future = np.concatenate((mgmt._bw[0 : t + 1], bw_future))
         ind = 0
         for t2 in range(t + 1, t + expectation_horizon + 1):
-            mgmt._nourishment_menu_bw[i, ind] = np.average(bw_past_and_future[t2 - (expectation_horizon - 1) : t2 + 1])
+            mgmt._nourishment_menu_bw[i, ind] = np.average(
+                bw_past_and_future[t2 - (expectation_horizon - 1) : t2 + 1]
+            )
             ind += 1
     else:
         bw_past_and_future = np.concatenate((mgmt._bw[0 : t + 1], bw_future))
         ind = 0
         for t2 in range(t + 1, t + expectation_horizon + 1):
-            mgmt._nourishment_menu_bw[i, ind] = np.average(bw_past_and_future[t2 - (t - 1) - 1 : t2 + 1])
+            mgmt._nourishment_menu_bw[i, ind] = np.average(
+                bw_past_and_future[t2 - (t - 1) - 1 : t2 + 1]
+            )
             ind += 1
 
-    mgmt._nourishment_menu_totalcostperyear[i] = (mgmt._nourishment_menu_cost[i] * delta * (1 + delta) ** amort / ((1 + delta) ** amort - 1))
+    mgmt._nourishment_menu_totalcostperyear[i] = (
+        mgmt._nourishment_menu_cost[i]
+        * delta
+        * (1 + delta) ** amort
+        / ((1 + delta) ** amort - 1)
+    )
 
     for i in range(0, 11):
-        mgmt._nourishment_menu_add_tax[i] = (amort * mgmt._nourishment_menu_totalcostperyear[i] / np.sum(mgmt._taxratio_OF * I_OF * agent_of._price[t - 1] + (1 - I_OF) * agent_nof._price[t - 1]))
+        mgmt._nourishment_menu_add_tax[i] = (
+            amort
+            * mgmt._nourishment_menu_totalcostperyear[i]
+            / np.sum(
+                mgmt._taxratio_OF * I_OF * agent_of._price[t - 1]
+                + (1 - I_OF) * agent_nof._price[t - 1]
+            )
+        )
         mgmt._nourishment_menu_taxburden[:, i] = amort * (
             mgmt._nourishment_menu_add_tax[i] * (1 - I_OF) * agent_nof._price[t - 1]
             + mgmt._taxratio_OF
             * mgmt._nourishment_menu_add_tax[i]
             * I_OF
-            * agent_of._price[t - 1])
+            * agent_of._price[t - 1]
+        )
 
     return mgmt
 
@@ -169,9 +207,7 @@ def calculate_nourishment_plan_ben(time_index, agent_of, agent_nof, mgmt, agents
 
     for i in range(0, 11):
         mgmt._nourishment_pricelist[0 : agentsame._n_NOF, i] = mgmt._NOF_plan_price[i]
-        mgmt._nourishment_pricelist[agentsame._n_NOF :, i] = mgmt._OF_plan_price[
-            i
-        ]
+        mgmt._nourishment_pricelist[agentsame._n_NOF :, i] = mgmt._OF_plan_price[i]
 
     return mgmt
 
@@ -217,7 +253,10 @@ def evaluate_nourishment_plans(time_index, mgmt, agent_of, agent_nof, agentsame)
                     mgmt._nourishment_pricelist[i, j]
                     - mgmt._nourishment_pricelist[i, 10]
                 )
-                if mgmt._nourishment_menu_taxburden[i, j] < price_increase and mgmt._nourishment_menu_add_tax[j]>0:
+                if (
+                    mgmt._nourishment_menu_taxburden[i, j] < price_increase
+                    and mgmt._nourishment_menu_add_tax[j] > 0
+                ):
                     vote[i, j] = 1
 
     for j in range(0, 10):
@@ -228,9 +267,9 @@ def evaluate_nourishment_plans(time_index, mgmt, agent_of, agent_nof, agentsame)
     voter_choice = np.argwhere(tally_vote > 0.5)
 
     if np.size(voter_choice) > 1:
-        final_choice = voter_choice[-1] # ZW recheck this
+        final_choice = voter_choice[-1]  # ZW recheck this
     elif np.size(voter_choice) == 1:
-         final_choice = voter_choice
+        final_choice = voter_choice
     else:
         final_choice = 10
 
@@ -243,10 +282,17 @@ def evaluate_nourishment_plans(time_index, mgmt, agent_of, agent_nof, agentsame)
     # if 0 < final_choice < 9:
     else:
         mgmt._newplan[t + 1] = 1
-        mgmt._nourishtime[t + 1 : t + mgmt._nourish_plan_horizon + 1] = nourish_schedule[final_choice, :]
-        agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] = (agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] + mgmt._nourishment_menu_add_tax[final_choice])
-        agent_of._tau_prop[t + 1 : t + mgmt._amort + 1] = (agent_of._tau_prop[t + 1 : t + mgmt._amort + 1] + mgmt._taxratio_OF * mgmt._nourishment_menu_add_tax[final_choice])
-
+        mgmt._nourishtime[
+            t + 1 : t + mgmt._nourish_plan_horizon + 1
+        ] = nourish_schedule[final_choice, :]
+        agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] = (
+            agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1]
+            + mgmt._nourishment_menu_add_tax[final_choice]
+        )
+        agent_of._tau_prop[t + 1 : t + mgmt._amort + 1] = (
+            agent_of._tau_prop[t + 1 : t + mgmt._amort + 1]
+            + mgmt._taxratio_OF * mgmt._nourishment_menu_add_tax[final_choice]
+        )
 
     # if np.size(voter_choice) > 1 and voter_choice != 10:
     #     voter_choice = final_choice
@@ -347,8 +393,13 @@ def calculate_evaluate_dunes(
 
     tally_vote = np.sum(vote) / np.sum(agentsame._I_own)
     if tally_vote > 0.5:
-        mgmt._builddunetime[t+1] = 1
-        agent_nof._tau_prop[t + 1: t + mgmt._amort + 1] = agent_nof._tau_prop[t + 1: t + mgmt._amort + 1] + tau_add
-        agent_of._tau_prop[t + 1: t + mgmt._amort + 1] = agent_of._tau_prop[t + 1: t + mgmt._amort + 1] + mgmt._taxratio_OF * tau_add
+        mgmt._builddunetime[t + 1] = 1
+        agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] = (
+            agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] + tau_add
+        )
+        agent_of._tau_prop[t + 1 : t + mgmt._amort + 1] = (
+            agent_of._tau_prop[t + 1 : t + mgmt._amort + 1]
+            + mgmt._taxratio_OF * tau_add
+        )
 
     return agent_of, agent_nof, mgmt
