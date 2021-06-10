@@ -15,14 +15,14 @@ def calculate_risk_premium(time_index, agentsame, agent, modelforcing, frontrow_
     for ii in range(np.size(agent._rp_o)):
         agent._rp_o[ii] = (
             a
-            - b * (modelforcing._barr_elev - modelforcing._msl[t])
-            - c * agentsame._Edh[t] * (modelforcing._barr_elev - modelforcing._msl[t])
+            - b * (modelforcing._barr_elev[t])
+            - c * agentsame._Edh[t] * (modelforcing._barr_elev[t])
         ) * agent._rp_base[ii] + of * 0.01
 
     agent._rp_I = (
         a
-        - b * (modelforcing._barr_elev - modelforcing._msl[t])
-        - c * agentsame._Edh[t] * (modelforcing._barr_elev - modelforcing._msl[t])
+        - b * (modelforcing._barr_elev[t])
+        - c * agentsame._Edh[t] * (modelforcing._barr_elev[t])
     ) * np.mean(agent._range_rp_base) + of * 0.01
 
     return agent

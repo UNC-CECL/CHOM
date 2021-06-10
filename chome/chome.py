@@ -32,7 +32,7 @@ class Chome:
         barrier_island_height=1,
         beach_width_beta_oceanfront=0.2,
         beach_width_beta_nonoceanfront=0.1,
-        beach_nourishment_fill_depth=10,
+        beach_nourishment_fill_depth=10,  #
         beach_nourishment_fill_width=2000,
         beach_full_cross_shore=100,
         discount_rate=0.06,
@@ -122,8 +122,7 @@ class Chome:
                 self._ER = shoreline_retreat_rate + np.zeros(self._T)
                 self._RNG = np.random.default_rng(seed=total_number_of_agents)
                 self._Tfinal = self._T - nourishment_plan_time_commitment
-                self._barr_elev = barrier_island_height
-                self._msl = np.zeros(self._T)
+                self._barr_elev = barrier_island_height + np.zeros(self._T)
 
         class ManagementParameters:
             def __init__(self):
@@ -409,8 +408,42 @@ class Chome:
 
     @property
     def barr_elev(self):
-        return self._modelforcing._barr_elev
+        return (
+            self._modelforcing._barr_elev
+        )  # Barrier elevation, this was a scalar is now a time series
 
     @barr_elev.setter
     def barr_elev(self, value):
         self._modelforcing._barr_elev = value
+
+    @property
+    def beach_width(self):
+        return self._mgmt._bw  # Note: beach width - this is a time series
+
+    @beach_width.setter
+    def beach_width(self, value):
+        self._mgmt._bw = value
+
+    @property
+    def bw_erosion_rate(self):
+        return (
+            self._modelforcing._ER
+        )  # beach width erosion rate - this is a time series
+
+    @bw_erosion_rate.setter
+    def bw_erosion_rate(self, value):
+        self._modelforcing._ER = value
+
+    @property
+    def dune_height(self):
+        return self._mgmt._h_dune  # dune height - this is a time series
+
+    @beach_width.setter
+    def dune_height(self, value):
+        self._mgmt._h_dune = value
+
+    # K: I think these are all that need to pass from CHOM to CASCADE yea?
+
+    # self._mgmt._nourishtime[t]    # this is the boolean for doing beach nourishment
+    # self._mgmt._addvolume[t]      # this is the nourishment volume in m^3/m
+    # self._mgmt._builddunetime[t]  # this is the boolean for doing dune building

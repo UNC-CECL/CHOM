@@ -75,7 +75,7 @@ def calculate_nourishment_plan_cost(
     delta = mgmt._delta_disc
     cost = np.zeros(10)
     amort = mgmt._amort
-    barrier_height = modelforcing._barr_elev - modelforcing._msl[t]
+    barrier_height = modelforcing._barr_elev[t]
 
     mgmt._nourishment_menu_volumes = 0 * mgmt._nourishment_menu_volumes
     mgmt._nourishment_menu_bw = 0 * mgmt._nourishment_menu_bw
@@ -103,6 +103,9 @@ def calculate_nourishment_plan_cost(
         varcost = namount / (((1 + delta) ** nourish_yr))
         maxplan = np.argwhere(nourish_yr > 11)  # only consider costs over next 10 years
         maxplan = maxplan[0, 0]
+        mgmt._nourishment_menu_volumes[i, nourish_yr[0:maxplan]] = (
+            namount[0:maxplan] / sandcost / Llength
+        )
         mgmt._nourishment_menu_cost[i] = (
             np.sum(fcost[0:maxplan])
             + np.sum(varcost[0:maxplan])
@@ -331,8 +334,8 @@ def calculate_evaluate_dunes(
     width = 4
 
     fixedcost = mgmt._fixedcost_dune
-    sandvolume = Llength * width * delta_dune
-    var_cost = sandvolume * sandcost
+    dunesandvolume = Llength * width * delta_dune
+    var_cost = dunesandvolume * sandcost
     totalcost = fixedcost + var_cost
     tc_peryear = (
         totalcost
