@@ -29,6 +29,7 @@ class Chome:
         total_number_of_agents=1000,
         agent_expectations_time_horizon=30,
         agent_erosion_update_weight=0.5,
+        average_interior_width = 100,
         barrier_island_height=1,
         beach_width_beta_oceanfront=0.2,
         beach_width_beta_nonoceanfront=0.1,
@@ -98,7 +99,8 @@ class Chome:
         dune_height_build: int, optional
             Height (meters) of fully built dunes
         barrier_island_height: int, optional
-            Height of barrier island (meters) with respect to fixed reference point
+            Height of barrier island (meters) with respect to mean sea level
+        average_interior_width: average interior width of barrier (meters)
         Examples
         --------
         >>> from chome import Chome
@@ -171,6 +173,7 @@ class Chome:
 
         class AgentCommon:
             def __init__(self):
+                self._average_interior_width = average_interior_width
                 self._share_OF = share_oceanfront
                 self._theta_er = agent_erosion_update_weight
                 self._Ebw = np.zeros(total_time)
@@ -266,6 +269,7 @@ class Chome:
             self._agentsame,
             self._agent_nonoceanfront,
             self._modelforcing,
+            self._mgmt,
             frontrow_on=False,
         )
         self._agent_oceanfront = calculate_risk_premium(
@@ -273,6 +277,7 @@ class Chome:
             self._agentsame,
             self._agent_oceanfront,
             self._modelforcing,
+            self._mgmt,
             frontrow_on=True,
         )
         self._mgmt = calculate_nourishment_plan_cost(
@@ -359,6 +364,7 @@ class Chome:
         self._agent_oceanfront = agent_distribution_adjust(
             self._time_index,
             self._modelforcing,
+            self._mgmt,
             self._agent_oceanfront,
             self._agentsame,
             frontrow_on=True,
@@ -367,6 +373,7 @@ class Chome:
         self._agent_nonoceanfront = agent_distribution_adjust(
             self._time_index,
             self._modelforcing,
+            self._mgmt,
             self._agent_nonoceanfront,
             self._agentsame,
             frontrow_on=False,
