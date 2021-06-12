@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from .agents import (
@@ -22,6 +24,18 @@ from .user_cost import (
 )
 
 
+# def calculate_total_number_agents(
+#     average_interior_width, alongshore_domain_extent, house_footprint
+# ):
+#
+#     # calculations go here
+#     number_rows = np.floor(average_interior_width / house_footprint)
+#
+#     total_number_of_agents = number_rows
+#
+#     return total_number_of_agents
+
+
 class Chome:
     def __init__(
         self,
@@ -32,8 +46,10 @@ class Chome:
         barrier_island_height=1,
         beach_width_beta_oceanfront=0.2,
         beach_width_beta_nonoceanfront=0.1,
-        beach_nourishment_fill_depth=10,  #
-        beach_nourishment_fill_width=2000,
+        # beach_nourishment_fill_depth=10,
+        shoreface_depth=10,  #
+        # beach_nourishment_fill_width=2000,
+        alongshore_domain_extent=2000,
         beach_full_cross_shore=100,
         discount_rate=0.06,
         dune_height_build=4,
@@ -107,10 +123,13 @@ class Chome:
 
         self._name = name
         self._time_index = 1
-        self._n = total_number_of_agents
-        # average risk premium real estate (same for investor and owner)
         self._nourishment_off = 0
         self._increasing_outside_market = True
+
+        # total_number_of_agents = calculate_total_number_agents(
+        #     alongshore_domain_extent, alongshore_domain_extent
+        # )
+        self._n = total_number_of_agents
 
         ###############################################################################
         # share subsets of the variables in different classes for easy passing
@@ -126,6 +145,7 @@ class Chome:
 
         class ManagementParameters:
             def __init__(self):
+                self._dune_sand_volume = None
                 self._amort = nourishment_plan_loan_amortization_length
                 self._beach_plan = 11 + np.zeros(total_time)
                 self._bta_NOF = beach_width_beta_nonoceanfront
@@ -134,8 +154,8 @@ class Chome:
                 self._x0 = beach_full_cross_shore
                 self._bw = np.zeros(total_time)
                 self._bw[0] = self._x0
-                self._Ddepth = beach_nourishment_fill_depth
-                self._lLength = beach_nourishment_fill_width
+                self._Ddepth = shoreface_depth
+                self._lLength = alongshore_domain_extent
                 self._fixedcost_beach = fixed_cost_beach_nourishment
                 self._fixedcost_dune = fixed_cost_dune_nourishment
                 self._h0 = dune_height_build
@@ -402,6 +422,18 @@ class Chome:
 
         self._time_index += 1
 
+    ###############################################################################
+    # save data
+    ###############################################################################
+
+    def save(self, directory):
+        filename = self._filename + ".npz"
+
+        chome = [self]
+
+        os.chdir(directory)
+        np.savez(filename, chome=chome)
+
     @property
     def time_index(self):
         return self._time_index
@@ -438,12 +470,34 @@ class Chome:
     def dune_height(self):
         return self._mgmt._h_dune  # dune height - this is a time series
 
-    @beach_width.setter
+    @dune_height.setter
     def dune_height(self, value):
         self._mgmt._h_dune = value
 
-    # K: I think these are all that need to pass from CHOM to CASCADE yea?
+    @property
+    def dune_sand_volume(self):
+        return self._mgmt._dune_sand_volume  #m^3
 
-    # self._mgmt._nourishtime[t]    # this is the boolean for doing beach nourishment
-    # self._mgmt._addvolume[t]      # this is the nourishment volume in m^3/m
-    # self._mgmt._builddunetime[t]  # this is the boolean for doing dune building
+    @dune_sand_volume.setter
+    def dune_sand_volume(self, value):
+        self._mgmt._dune_sand_volume = value
+
+    @property  # NOTE FROM KA: we don't need a setter, because these variables should only be passed/modified internally
+    def nourish_now(self):
+        return self._mgmt._nourishtime  # this is the boolean for doing beach nourishment, time series
+
+    @property
+    def rebuild_dune_now(self):
+        return self._mgmt._builddunetime  # this is the boolean for doing dune building, time series
+
+    @property
+    def nourishment_volume(self):
+        return self._mgmt._addvolume  # this is the nourishment volume in m^3/m, time series
+
+    # @property
+    # def average_interior_width(self):
+    #     return self._agentsame._average_interior_width  # Zack, will need to update location
+    #
+    # @average_interior_width.setter
+    # def average_interior_width(self, value):
+    #     self._agentsame._average_interior_width = value
