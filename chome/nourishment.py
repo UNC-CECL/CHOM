@@ -359,10 +359,10 @@ def calculate_evaluate_dunes(
     agent_of_nodune = copy.deepcopy(agent_of)
     agent_nof_nodune = copy.deepcopy(agent_nof)
     agent_nof_nodune = calculate_risk_premium(
-        time_index, agentsame, agent_nof_nodune, modelforcing, frontrow_on=False
+        time_index, agentsame, agent_nof_nodune, modelforcing, mgmt, frontrow_on=False
     )
     agent_of_nodune = calculate_risk_premium(
-        time_index, agentsame, agent_of_nodune, modelforcing, frontrow_on=True
+        time_index, agentsame, agent_of_nodune, modelforcing, mgmt, frontrow_on=True
     )
     agent_of_nodune = calculate_user_cost(
         time_index, agent_of_nodune, agent_of_nodune._tau_prop[t + 1]
@@ -373,13 +373,14 @@ def calculate_evaluate_dunes(
 
     agent_of_dune = copy.deepcopy(agent_of)
     agent_nof_dune = copy.deepcopy(agent_nof)
-    agentsame_dune = copy.deepcopy(agentsame)
-    agentsame_dune._Edh[t] = mgmt._h0
+    mgmt_dune = copy.deepcopy(mgmt)
+    mgmt_dune._h_dune[t]=mgmt_dune._h0
+
     agent_nof_dune = calculate_risk_premium(
-        time_index, agentsame_dune, agent_nof_dune, modelforcing, frontrow_on=False
+        time_index, agentsame, agent_nof_dune, modelforcing, mgmt_dune, frontrow_on=False
     )
     agent_of_dune = calculate_risk_premium(
-        time_index, agentsame_dune, agent_of_dune, modelforcing, frontrow_on=True
+        time_index, agentsame, agent_of_dune, modelforcing, mgmt_dune, frontrow_on=True
     )
     agent_of_dune = calculate_user_cost(
         time_index,
@@ -402,7 +403,7 @@ def calculate_evaluate_dunes(
                 vote[i] = 1
 
     tally_vote = np.sum(vote) / np.sum(agentsame._I_own)
-    if tally_vote > 0.5:
+    if tally_vote > 0.5 and mgmt._nourishtime[t+1]==1:
         mgmt._builddunetime[t + 1] = 1
         agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] = (
             agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] + tau_add

@@ -1,11 +1,14 @@
 import numpy as np
 
 
-def calculate_risk_premium(time_index, agentsame, agent, modelforcing, frontrow_on):
+def calculate_risk_premium(
+    time_index, agentsame, agent, modelforcing, mgmt, frontrow_on
+):
     t = time_index
-    a = 0.47
+    a = 0.46
     b = 0.4
     c = 0.0125
+    d = 0.005
 
     if frontrow_on:
         of = 1
@@ -14,17 +17,15 @@ def calculate_risk_premium(time_index, agentsame, agent, modelforcing, frontrow_
 
     for ii in range(np.size(agent._rp_o)):
         agent._rp_o[ii] = (
-            a
-            - b * (modelforcing._barr_elev[t])
-            - c * agentsame._Edh[t] * (modelforcing._barr_elev[t])
-        ) * agent._rp_base[ii] + of * 0.01
-
+            (a + of * 0.02)
+            - b * modelforcing._barr_elev[t]
+            - c * mgmt._h_dune[t] * modelforcing._barr_elev[t]
+        ) + agent._rp_base[ii] * d
     agent._rp_I = (
-        a
-        - b * (modelforcing._barr_elev[t])
-        - c * agentsame._Edh[t] * (modelforcing._barr_elev[t])
-    ) * np.mean(agent._range_rp_base) + of * 0.01
-
+        (a + of * 0.02)
+        - b * modelforcing._barr_elev[t]
+        - c * agentsame._Edh[t] * modelforcing._barr_elev[t]
+    ) + d
     return agent
 
 
@@ -101,11 +102,6 @@ def calculate_user_cost(time_index, agent, tau_prop):
 def expected_capital_gains(time_index, agent, modelforcing, frontrow_on):
 
     t = time_index
-
-    # if frontrow_on:
-    #     P_e = modelforcing._P_e_OF[0:t]
-    # else:
-    #     P_e = modelforcing._P_e_NOF[0:t]
 
     Lmin = 30
     Lmax = 30

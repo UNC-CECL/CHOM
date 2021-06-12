@@ -18,7 +18,6 @@ Notes
 
 import numpy as np
 
-# from copulas.multivariate import GaussianMultivariate
 from scipy.stats import beta
 from scipy.stats import norm  # contains PDF of Gaussian
 from scipy.stats import multivariate_normal
@@ -70,7 +69,8 @@ def agent_distribution(
         beta.ppf(U[:, 0], bline1, bline2),
         beta.ppf(U[:, 1], bline1, bline2),
         beta.ppf(U[:, 2], bline1, bline2),
-        beta.ppf(U[:, 3], bline1, bline2),
+        beta.ppf(U[:, 3], 2, 2),
+        # beta.ppf(U[:, 3], bline1, bline2),
     ]
 
     tau_o = X[0]
@@ -99,7 +99,7 @@ def agent_distribution(
     return tau_o, WTP_base, rp_base, WTP_alph
 
 
-def agent_distribution_adjust(time_index, modelforcing, agent, agentsame, frontrow_on):
+def agent_distribution_adjust(time_index, modelforcing, mgmt, agent, agentsame, frontrow_on):
     t = time_index
     cutoff1 = 0.1
     cutoff2 = 0.9
@@ -161,7 +161,7 @@ def agent_distribution_adjust(time_index, modelforcing, agent, agentsame, frontr
     )
 
     agent = calculate_risk_premium(
-        time_index, agentsame, agent, modelforcing, frontrow_on
+        time_index, agentsame, agent, modelforcing, mgmt, frontrow_on
     )
 
     return agent
