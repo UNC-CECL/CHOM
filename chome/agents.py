@@ -161,7 +161,7 @@ def agent_distribution_adjust(time_index, modelforcing, mgmt, agent, agentsame, 
     )
 
     agent = calculate_risk_premium(
-        time_index, agentsame, agent, modelforcing, mgmt, frontrow_on
+        time_index, agent, modelforcing, mgmt, frontrow_on
     )
 
     return agent

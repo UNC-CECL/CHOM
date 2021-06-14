@@ -94,18 +94,12 @@ def calculate_nourishment_plan_cost(
         ] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, i + 1)
         nourish_yr = nourish_yr + 1
         fcost = (fixedcost) / ((1 + delta) ** nourish_yr)
-        namount = (
-            nourish_xshore
-            * Llength
-            * (barrier_height + 0.5 * barrier_toedepth)
-            * sandcost
-        )
-        varcost = namount / (((1 + delta) ** nourish_yr))
+        namount = Llength * (nourish_xshore * (2 * barrier_height + barrier_toedepth) / 2)
+
+        varcost = (sandcost * namount) / (((1 + delta) ** nourish_yr))
         maxplan = np.argwhere(nourish_yr > 11)  # only consider costs over next 10 years
         maxplan = maxplan[0, 0]
-        mgmt._nourishment_menu_volumes[i, nourish_yr[0:maxplan]] = (
-            namount[0:maxplan] / sandcost / Llength
-        )
+        mgmt._nourishment_menu_volumes[i, nourish_yr[0:maxplan]] = ( namount[0:maxplan] )
         mgmt._nourishment_menu_cost[i] = (
             np.sum(fcost[0:maxplan])
             + np.sum(varcost[0:maxplan])
@@ -322,51 +316,39 @@ def evaluate_nourishment_plans(
 
 
 def calculate_evaluate_dunes(
-    time_index, mgmt, modelforcing, agentsame, agent_of, agent_nof
+    time_index, mgmt, modelforcing, agentsame, agent_of, agent_nof, dune_sand_volume
 ):
     t = time_index
     vote = np.zeros(shape=(agentsame._n_agent_total))
-    I_OF = agentsame._I_OF
-    I_own = agentsame._I_own
-    delta_dune = mgmt._h0 - mgmt._h_dune[t]
-    Llength = mgmt._lLength
-    sandcost = mgmt._sandcost
-    width = 4
 
-    fixedcost = mgmt._fixedcost_dune
-    dunesandvolume = Llength * width * delta_dune
-    var_cost = dunesandvolume * sandcost
-    totalcost = fixedcost + var_cost
-    tc_peryear = (
-        totalcost
-        * mgmt._delta_disc
-        * (1 + mgmt._delta_disc) ** mgmt._amort
-        / ((1 + mgmt._delta_disc) ** mgmt._amort - 1)
-    )
-    tau_add = (
-        (mgmt._amort)
-        * tc_peryear
-        / np.sum(
-            mgmt._taxratio_OF * I_OF * agent_of._price[t - 1]
-            + (1 - I_OF) * agent_nof._price[t - 1]
-        )
-    )
-    tax_burden = (mgmt._amort) * (
-        tau_add * (1 - I_OF) * agent_nof._price[t - 1]
-        + mgmt._taxratio_OF * tau_add * I_OF * agent_of._price[t - 1]
-    )
+    if dune_sand_volume == 0:
+        dune_sand_volume = mgmt._lLength * mgmt._dune_width * (mgmt._h0 - mgmt._h_dune[t])
+    else:
+        dune_sand_volume = mgmt._dune_sand_volume[t]
+
+    var_cost = dune_sand_volume * mgmt._sandcost
+    # var_cost = mgmt._dune_sand_volume * mgmt._sandcost
+
+    totalcost = var_cost + mgmt._fixedcost_dune
+    tc_peryear = (totalcost * mgmt._delta_disc * (1 + mgmt._delta_disc) ** mgmt._amort / ((1 + mgmt._delta_disc) ** mgmt._amort - 1))
+    tau_add = (mgmt._amort * tc_peryear / np.sum( mgmt._taxratio_OF * agentsame._I_OF * agent_of._price[t - 1] + (1 - agentsame._I_OF) * agent_nof._price[t - 1]))
+    tax_burden = (mgmt._amort) * (tau_add * (1 - agentsame._I_OF) * agent_nof._price[t - 1]+ mgmt._taxratio_OF * tau_add * agentsame._I_OF * agent_of._price[t - 1])
 
     agent_of_nodune = copy.deepcopy(agent_of)
     agent_nof_nodune = copy.deepcopy(agent_nof)
+
     agent_nof_nodune = calculate_risk_premium(
-        time_index, agentsame, agent_nof_nodune, modelforcing, mgmt, frontrow_on=False
+        time_index, agent_nof_nodune, modelforcing, mgmt, frontrow_on=False
     )
+
     agent_of_nodune = calculate_risk_premium(
-        time_index, agentsame, agent_of_nodune, modelforcing, mgmt, frontrow_on=True
+        time_index, agent_of_nodune, modelforcing, mgmt, frontrow_on=True
     )
+
     agent_of_nodune = calculate_user_cost(
         time_index, agent_of_nodune, agent_of_nodune._tau_prop[t + 1]
     )
+
     agent_nof_nodune = calculate_user_cost(
         time_index, agent_nof_nodune, agent_nof_nodune._tau_prop[t + 1]
     )
@@ -377,16 +359,19 @@ def calculate_evaluate_dunes(
     mgmt_dune._h_dune[t]=mgmt_dune._h0
 
     agent_nof_dune = calculate_risk_premium(
-        time_index, agentsame, agent_nof_dune, modelforcing, mgmt_dune, frontrow_on=False
+        time_index,  agent_nof_dune, modelforcing, mgmt_dune, frontrow_on=False
     )
+
     agent_of_dune = calculate_risk_premium(
-        time_index, agentsame, agent_of_dune, modelforcing, mgmt_dune, frontrow_on=True
+        time_index,  agent_of_dune, modelforcing, mgmt_dune, frontrow_on=True
     )
+
     agent_of_dune = calculate_user_cost(
         time_index,
         agent_of_dune,
         agent_of_dune._tau_prop[t + 1] + tau_add * mgmt._taxratio_OF,
     )
+
     agent_nof_dune = calculate_user_cost(
         time_index, agent_nof_dune, agent_nof_dune._tau_prop[t + 1] + tau_add
     )
@@ -403,11 +388,14 @@ def calculate_evaluate_dunes(
                 vote[i] = 1
 
     tally_vote = np.sum(vote) / np.sum(agentsame._I_own)
+
     if tally_vote > 0.5 and mgmt._nourishtime[t+1]==1:
         mgmt._builddunetime[t + 1] = 1
+
         agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] = (
             agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] + tau_add
         )
+
         agent_of._tau_prop[t + 1 : t + mgmt._amort + 1] = (
             agent_of._tau_prop[t + 1 : t + mgmt._amort + 1]
             + mgmt._taxratio_OF * tau_add

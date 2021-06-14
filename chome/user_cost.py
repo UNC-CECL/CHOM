@@ -2,7 +2,7 @@ import numpy as np
 
 
 def calculate_risk_premium(
-    time_index, agentsame, agent, modelforcing, mgmt, frontrow_on
+    time_index, agent, modelforcing, mgmt, frontrow_on
 ):
     t = time_index
     a = 0.46
@@ -24,7 +24,7 @@ def calculate_risk_premium(
     agent._rp_I = (
         (a + of * 0.02)
         - b * modelforcing._barr_elev[t]
-        - c * agentsame._Edh[t] * modelforcing._barr_elev[t]
+        - c * mgmt._h_dune[t] * modelforcing._barr_elev[t]
     ) + d
     return agent
 

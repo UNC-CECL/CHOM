@@ -21,7 +21,7 @@ def evolve_environment(time_index, agentsame, mgmt, modelforcing):
     if mgmt._builddunetime[t] == 1:  # if dune build is scheduled
         mgmt._h_dune[t] = mgmt._h0  # then build it back up
     else:
-        mgmt._h_dune[t] = mgmt._h_dune[t - 1] - 0.2
+        mgmt._h_dune[t] = mgmt._h_dune[t - 1] - 0.1
 
     if mgmt._bw[t] < 1:
         mgmt._bw[t] = 1
@@ -30,16 +30,6 @@ def evolve_environment(time_index, agentsame, mgmt, modelforcing):
         mgmt._h_dune[t] = 0.1
 
     return mgmt, agentsame
-
-
-def calculate_expected_dune_height(time_index, agentsame, mgmt):
-    t = time_index
-    expectation_horizon = mgmt._expectation_horizon
-    if t > expectation_horizon:
-        agentsame._Edh[t] = np.mean(mgmt._h_dune[t - (expectation_horizon - 1) : t + 1])
-    else:
-        agentsame._Edh[t] = np.mean(mgmt._h_dune[0 : t + 1])
-    return agentsame
 
 
 def calculate_expected_beach_width(time_index, mgmt, agentsame, agent_of, agent_nof):
