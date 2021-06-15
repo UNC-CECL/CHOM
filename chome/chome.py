@@ -29,7 +29,7 @@ def calculate_total_number_agents(
     number_rows = np.floor(average_interior_width / house_footprint)
     house_units_per_row = np.floor(alongshore_domain_extent / house_footprint)
     total_number_agents = int(number_rows * house_units_per_row)
-    share_oceanfront = house_units_per_row/total_number_agents
+    share_oceanfront = house_units_per_row / total_number_agents
 
     return total_number_agents, share_oceanfront
 
@@ -38,40 +38,38 @@ class Chome:
     def __init__(
         self,
         name="default",
-        total_number_agents=1000,
-        agent_expectations_time_horizon=30,
-        agent_erosion_update_weight=0.5,
-        average_interior_width=100,
+        total_time=400,
+        average_interior_width=100,  # Zach, need to add descriptions below
         barrier_island_height=1,
-        beach_width_beta_oceanfront=0.2,
-        beach_width_beta_nonoceanfront=0.1,
+        beach_width=None,
+        dune_height=None,
         shoreface_depth=10,
-        alongshore_domain_extent=3000,
-        beach_full_cross_shore=100,
-        house_footprint=15,
         dune_width=4,
-        discount_rate=0.06,
         dune_height_build=4,
+        alongshore_domain_extent=3000,
+        shoreline_retreat_rate=4,
+        sand_cost=10,
+        taxratio_oceanfront=1,
         external_housing_market_value_oceanfront=6e5,
         external_housing_market_value_nonoceanfront=4e5,
         fixed_cost_beach_nourishment=2e6,
         fixed_cost_dune_nourishment=2e5,
         nourishment_cost_subsidy=10e6,
+        house_footprint=15,  # Zach, need to add descriptions below
+        agent_expectations_time_horizon=30,
+        agent_erosion_update_weight=0.5,
+        beach_width_beta_oceanfront=0.2,
+        beach_width_beta_nonoceanfront=0.1,
+        beach_full_cross_shore=100,
+        discount_rate=0.06,
         nourishment_plan_loan_amortization_length=5,
         nourishment_plan_time_commitment=10,
-        share_oceanfront=0.5,
-        shoreline_retreat_rate=4,
-        sand_cost=10,
-        total_time=400,
-        taxratio_oceanfront=1,
     ):
         """Coastal Home Ownership Model CHOM
         Parameters
         ----------
         name: string, optional
             Name of simulation
-        total_number_agents: int, optional
-            Total number of agents in simulation
         total_time: int, optional
             Total time of simulation
         beach_width_beta_oceanfront: float, optional
@@ -115,6 +113,7 @@ class Chome:
         barrier_island_height: int, optional
             Height of barrier island (meters) with respect to mean sea level
         average_interior_width: average interior width of barrier (meters)
+
         Examples
         --------
         >>> from chome import Chome
@@ -127,7 +126,9 @@ class Chome:
         self._increasing_outside_market = True
 
         [total_number_agents, share_oceanfront] = calculate_total_number_agents(
-            average_interior_width, alongshore_domain_extent, house_footprint,
+            average_interior_width,
+            alongshore_domain_extent,
+            house_footprint,
         )
         self._n = total_number_agents
         self._share_oceanfront = share_oceanfront
@@ -154,7 +155,12 @@ class Chome:
                 self._builddunetime = np.zeros(total_time)
                 self._x0 = beach_full_cross_shore
                 self._bw = np.zeros(total_time)
-                self._bw[0] = self._x0
+                if beach_width is None:
+                    self._bw[0] = self._x0
+                else:
+                    self._bw[
+                        0
+                    ] = beach_width  # allows user to input starting beach width
                 self._Ddepth = shoreface_depth
                 self._lLength = alongshore_domain_extent
                 self._fixedcost_beach = fixed_cost_beach_nourishment
@@ -162,7 +168,10 @@ class Chome:
                 self._h0 = dune_height_build
                 self._dune_width = dune_width
                 self._h_dune = np.zeros(total_time)
-                self._h_dune[0] = self._h0
+                if dune_height is None:
+                    self._h_dune[0] = self._h0  # set to dune design height
+                else:
+                    self._h_dune[0] = dune_height
                 self._nourishtime = np.zeros(total_time)
                 self._dune_sand_volume = np.zeros(total_time)
                 self._addvolume = np.zeros(total_time)
@@ -185,9 +194,7 @@ class Chome:
                 self._nourishment_menu_taxburden = np.zeros(
                     shape=(total_number_agents, 11)
                 )
-                self._nourishment_pricelist = np.zeros(
-                    shape=(total_number_agents, 11)
-                )
+                self._nourishment_pricelist = np.zeros(shape=(total_number_agents, 11))
                 self._dune_pricelist = np.zeros(shape=(total_number_agents, 2))
                 self._OF_plan_price = np.zeros(11)
                 self._NOF_plan_price = np.zeros(11)
@@ -207,7 +214,7 @@ class Chome:
                 self._I_OF = np.zeros(
                     self._n_agent_total
                 )  # the first n_NOF spots are back row, remaining are front row
-                self._I_OF[self._n_NOF + 1:] = 1
+                self._I_OF[self._n_NOF + 1 :] = 1
                 self._I_own = np.zeros(self._n_agent_total)
                 self._P_e_OF = external_housing_market_value_oceanfront
                 self._P_e_NOF = external_housing_market_value_nonoceanfront
@@ -232,6 +239,10 @@ class Chome:
         self._mgmt = ManagementParameters()
         self._agentsame = AgentCommon()
         self._savevar = VariableSave()
+
+        # time series for tracking nourishment and dune rebuild
+        self._nourish_now = np.zeros(total_time)
+        self._rebuild_dune_now = np.zeros(total_time)
 
         ###############################################################################
         # agents/user cost
@@ -276,8 +287,9 @@ class Chome:
         self._agentsame._I_own[nof_indices[0:n1]] = 1
         self._agentsame._I_own[of_indices[0:n2]] = 1
 
-        [self._mgmt, self._agentsame] = evolve_environment(
-            self._time_index, self._agentsame, self._mgmt, self._modelforcing
+        [self._mgmt, self._agentsame, self._nourish_now[self._time_index], self._rebuild_dune_now[self._time_index]] = \
+            evolve_environment(
+                self._time_index, self._agentsame, self._mgmt, self._modelforcing
         )
 
         self._agent_nonoceanfront = calculate_risk_premium(
@@ -478,7 +490,7 @@ class Chome:
 
     @property
     def dune_sand_volume(self):
-        return self._mgmt._dune_sand_volume  #m^3
+        return self._mgmt._dune_sand_volume  # m^3
 
     @dune_sand_volume.setter
     def dune_sand_volume(self, value):
@@ -486,12 +498,28 @@ class Chome:
 
     @property
     def nourishment_volume(self):
-        return self._mgmt._addvolume  # this is the nourishment volume in m^3/m, time series
+        return (
+            self._mgmt._addvolume
+        )  # this is the nourishment volume in m^3/m, time series
+
+    @property
+    def lLength(self):
+        return self._mgmt._lLength  # alongshore length of domain
 
     @property
     def average_interior_width(self):
-        return self._agentsame._average_interior_width  # Zack, will need to update location
+        return (
+            self._agentsame._average_interior_width
+        )  # Zack, is this the reight location of this variable?
 
     @average_interior_width.setter
     def average_interior_width(self, value):
         self._agentsame._average_interior_width = value
+
+    @property
+    def nourish_now(self):
+        return self._nourish_now  # time series
+
+    @property
+    def rebuild_dune_now(self):
+        return self._rebuild_dune_now  # time series
