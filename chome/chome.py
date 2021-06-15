@@ -347,7 +347,6 @@ class Chome:
             self._agentsame,
             self._agent_oceanfront,
             self._agent_nonoceanfront,
-            self._mgmt._dune_sand_volume,
         )
 
         self._agent_oceanfront = expected_capital_gains(
