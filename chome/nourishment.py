@@ -285,8 +285,13 @@ def evaluate_nourishment_plans(
     else: # there must be multiple suitable choices, i.e. np.size(voter_choice) > 1,
         # Z re-doing this currently -
         # determine which choice maximizes net benefits
-        # total_net_benefits = np.sum(net_benefits)
-        final_choice = voter_choice[-1]
+        not_voter_choice = np.ones(10)
+        not_voter_choice[voter_choice] = 0
+        summed_net_benefit = np.zeros(10)
+        for j in range(0,10):
+            summed_net_benefit[j] = np.sum(net_benefit[:,j]*agentsame._I_own) + 0.0
+        summed_net_benefit[np.argwhere(not_voter_choice==1)]=None
+        final_choice = np.argwhere(summed_net_benefit==np.nanmax(summed_net_benefit))
 
     if final_choice == 10:
         mgmt._newplan[t + 1] = 0
