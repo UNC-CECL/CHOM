@@ -230,7 +230,7 @@ class Agents:
             self._range_WTP_base = [5000, 35000]
             self._range_WTP_alph = [5000, 35000]
             self._range_tau_o = [0.05, 0.37]
-            self._beta_x = 0.6
+            self._beta_x = 0.69
             self._bta = 0.2
             if increasing_outside_market:
                 self._P_e = np.linspace(
@@ -243,7 +243,7 @@ class Agents:
             self._range_WTP_base = [5000, 35000]
             self._range_WTP_alph = [5000, 35000]
             self._range_tau_o = [0.05, 0.37]
-            self._beta_x = 0.38
+            self._beta_x = 0.46
             self._bta = 0.1
             if increasing_outside_market:
                 self._P_e = np.linspace(

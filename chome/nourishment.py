@@ -277,8 +277,7 @@ def evaluate_nourishment_plans(
     tally_vote[9] = 0 # don't allow only 1 nourishment (must commit to more than 1)
     voter_choice = np.argwhere(tally_vote > 0.5)
 
-
-    if np.size(voter_choice) == 0 or mgmt._nourishtime[t] == 1:
+    if np.size(voter_choice) == 0 or mgmt._nourishtime[t] == 1 or mgmt._bw[t]>mgmt._x0:
         final_choice = 10
     elif np.size(voter_choice) == 1:
         final_choice = voter_choice
