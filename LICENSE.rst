@@ -1,7 +1,7 @@
 The MIT License (MIT)
 =====================
 
-Copyright © `2020` `UNC Coastal Environmental Change Lab`
+Copyright © `2020` `Zachary C. Williams`
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation

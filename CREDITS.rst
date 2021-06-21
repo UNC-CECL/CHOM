@@ -2,6 +2,6 @@
 Credits
 =======
 
-* Zack Williams
+* Zack Williams <zachary.c.williams@duke.edu>
 
-* Katherine Anarde
+* Katherine Anarde <kanarde@ncsu.edu>
