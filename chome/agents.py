@@ -5,9 +5,7 @@ This module does agent stuff (formerly agent_initialize.m and others)
 References
 ----------
 
-.. [1] Jaap H. Nienhuis, Jorge Lorenzo Trueba; Simulating barrier island response to sea level rise with the barrier
-    island and inlet environment (BRIE) model v1.0 ; Geosci. Model Dev., 12, 4013–4030, 2019;
-    https://doi.org/10.5194/gmd-12-4013-2019
+.. [1]
 
 
 Notes
@@ -99,7 +97,9 @@ def agent_distribution(
     return tau_o, WTP_base, rp_base, WTP_alph
 
 
-def agent_distribution_adjust(time_index, modelforcing, mgmt, agent, agentsame, frontrow_on):
+def agent_distribution_adjust(
+    time_index, modelforcing, mgmt, agent, agentsame, frontrow_on
+):
     t = time_index
     cutoff1 = 0.1
     cutoff2 = 0.9
@@ -160,9 +160,7 @@ def agent_distribution_adjust(time_index, modelforcing, mgmt, agent, agentsame, 
         agent._n,
     )
 
-    agent = calculate_risk_premium(
-        time_index, agent, modelforcing, mgmt, frontrow_on
-    )
+    agent = calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on)
 
     return agent
 
@@ -220,10 +218,6 @@ class Agents:
         self._beta_x_feedbackparam = 1e-7
         self._adjust_beta_x = 1e-8
         self._rcov = 0.9
-
-        RNG = np.random.default_rng(
-            seed=self._n
-        )  # KA: added seeded random number generator the size of n
 
         # owner agent
         if frontrow_on:

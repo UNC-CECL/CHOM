@@ -3,6 +3,7 @@ from .user_cost import calculate_risk_premium
 from .user_cost import calculate_user_cost
 import copy as copy
 
+
 def evaluate_nourishment_future_beach_width(
     time_index, mgmt, agentsame, nourish_interval
 ):
@@ -93,19 +94,25 @@ def calculate_nourishment_plan_cost(
         ] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, i + 1)
         nourish_yr = nourish_yr + 1
         fcost = (fixedcost) / ((1 + delta) ** nourish_yr)
-        namount = Llength * (nourish_xshore * (2 * barrier_height + barrier_toedepth) / 2)
-        varcost = (sandcost * namount) / (((1 + delta) ** nourish_yr))
+        namount = Llength * (
+            nourish_xshore * (2 * barrier_height + barrier_toedepth) / 2
+        )
+        varcost = (sandcost * namount) / ((1 + delta) ** nourish_yr)
         maxplan = np.argwhere(nourish_yr > 11)  # only consider costs over next 10 years
         maxplan = maxplan[0, 0]
-        mgmt._nourishment_menu_volumes[i, nourish_yr[0:maxplan]] = ( namount[0:maxplan] )
-        mgmt._nourishment_menu_cost[i] = ( np.sum(fcost[0:maxplan]) + np.sum(varcost[0:maxplan]) - mgmt._nourish_subsidy )
+        mgmt._nourishment_menu_volumes[i, nourish_yr[0:maxplan]] = namount[0:maxplan]
+        mgmt._nourishment_menu_cost[i] = (
+            np.sum(fcost[0:maxplan])
+            + np.sum(varcost[0:maxplan])
+            - mgmt._nourish_subsidy
+        )
 
         if t > 30:
-            bw_past_and_future = np.concatenate((mgmt._bw[0: t + 1], bw_future))
+            bw_past_and_future = np.concatenate((mgmt._bw[0 : t + 1], bw_future))
             ind = 0
             for t2 in range(t + 1, t + expectation_horizon + 1):
                 mgmt._nourishment_menu_bw[i, ind] = np.average(
-                    bw_past_and_future[t2 - (expectation_horizon - 1): t2 + 1]
+                    bw_past_and_future[t2 - (expectation_horizon - 1) : t2 + 1]
                 )
                 ind += 1
         else:
@@ -175,9 +182,6 @@ def calculate_nourishment_plan_cost(
             * agent_of._price[t - 1]
         )
 
-
-
-
     return mgmt
 
 
@@ -214,7 +218,7 @@ def calculate_nourishment_plan_ben(time_index, agent_of, agent_nof, mgmt, agents
         mgmt._OF_plan_price[i] = agent_of_copy._price[t]
         mgmt._NOF_plan_price[i] = agent_nof_copy._price[t]
 
-    mgmt._nourishment_pricelist = 0*mgmt._nourishment_pricelist # just added 6/15
+    mgmt._nourishment_pricelist = 0 * mgmt._nourishment_pricelist  # just added 6/15
 
     for i in range(0, 11):
         mgmt._nourishment_pricelist[0 : agentsame._n_NOF, i] = mgmt._NOF_plan_price[i]
@@ -232,7 +236,9 @@ def evaluate_nourishment_plans(
     net_benefit = np.zeros(shape=(agentsame._n_agent_total, 10))
     schedule_conflict = np.zeros(10)
     tally_vote = np.zeros(10)
-    nourish_schedule = np.tile(mgmt._nourishtime[t + 1: t + mgmt._nourish_plan_horizon + 1],(11,1))
+    nourish_schedule = np.tile(
+        mgmt._nourishtime[t + 1 : t + mgmt._nourish_plan_horizon + 1], (11, 1)
+    )
 
     for j in range(0, 10):
         nindx = np.arange(1, mgmt._nourish_plan_horizon + 1, j + 1)
@@ -255,7 +261,9 @@ def evaluate_nourishment_plans(
     # in property value minus the yearly tax burden
     for j in range(0, 10):
         for i in range(0, agentsame._n_agent_total):
-            price_increase = mgmt._nourishment_pricelist[i, j] - mgmt._nourishment_pricelist[i, 10]
+            price_increase = (
+                mgmt._nourishment_pricelist[i, j] - mgmt._nourishment_pricelist[i, 10]
+            )
             net_benefit[i, j] = price_increase - mgmt._nourishment_menu_taxburden[i, j]
 
     # Voting: vote on nourishment menu options, only resident home owners vote
@@ -273,24 +281,28 @@ def evaluate_nourishment_plans(
     for j in range(0, 10):
         tally_vote[j] = np.sum(vote[:, j]) / np.sum(agentsame._I_own)
 
-    tally_vote[0] = 0 # don't allow nourishment every year
-    tally_vote[9] = 0 # don't allow only 1 nourishment (must commit to more than 1)
+    tally_vote[0] = 0  # don't allow nourishment every year
+    tally_vote[9] = 0  # don't allow only 1 nourishment (must commit to more than 1)
     voter_choice = np.argwhere(tally_vote > 0.5)
 
-    if np.size(voter_choice) == 0 or mgmt._nourishtime[t] == 1 or mgmt._bw[t]>mgmt._x0:
+    if (
+        np.size(voter_choice) == 0
+        or mgmt._nourishtime[t] == 1
+        or mgmt._bw[t] > mgmt._x0
+    ):
         final_choice = 10
     elif np.size(voter_choice) == 1:
         final_choice = voter_choice
-    else: # there must be multiple suitable choices, i.e. np.size(voter_choice) > 1,
+    else:  # there must be multiple suitable choices, i.e. np.size(voter_choice) > 1,
         # Z re-doing this currently -
         # determine which choice maximizes net benefits
         not_voter_choice = np.ones(10)
         not_voter_choice[voter_choice] = 0
         summed_net_benefit = np.zeros(10)
-        for j in range(0,10):
-            summed_net_benefit[j] = np.sum(net_benefit[:,j]*agentsame._I_own) + 0.0
-        summed_net_benefit[np.argwhere(not_voter_choice==1)]=None
-        final_choice = np.argwhere(summed_net_benefit==np.nanmax(summed_net_benefit))
+        for j in range(0, 10):
+            summed_net_benefit[j] = np.sum(net_benefit[:, j] * agentsame._I_own) + 0.0
+        summed_net_benefit[np.argwhere(not_voter_choice == 1)] = None
+        final_choice = np.argwhere(summed_net_benefit == np.nanmax(summed_net_benefit))
 
     if final_choice == 10:
         mgmt._newplan[t + 1] = 0
@@ -325,16 +337,33 @@ def calculate_evaluate_dunes(
     price_increase = np.zeros(shape=(agentsame._n_agent_total))
 
     if mgmt._dune_sand_volume[t] == 0:
-        mgmt._dune_sand_volume[t] = mgmt._lLength * mgmt._dune_width * (mgmt._h0 - mgmt._h_dune[t])
+        mgmt._dune_sand_volume[t] = (
+            mgmt._lLength * mgmt._dune_width * (mgmt._h0 - mgmt._h_dune[t])
+        )
 
     # calculate the cost of building a dune
     # translate cost into proposed property tax increase
     # and tax burden over amortization period
     var_cost = mgmt._dune_sand_volume[t] * mgmt._sandcost
     totalcost = var_cost + mgmt._fixedcost_dune
-    tc_peryear = (totalcost * mgmt._delta_disc * (1 + mgmt._delta_disc) ** mgmt._amort / ((1 + mgmt._delta_disc) ** mgmt._amort - 1))
-    tau_add = (mgmt._amort * tc_peryear / np.sum( mgmt._taxratio_OF * agentsame._I_OF * agent_of._price[t - 1] + (1 - agentsame._I_OF) * agent_nof._price[t - 1]))
-    tax_burden = (mgmt._amort) * (tau_add * (1 - agentsame._I_OF) * agent_nof._price[t - 1]+ mgmt._taxratio_OF * tau_add * agentsame._I_OF * agent_of._price[t - 1])
+    tc_peryear = (
+        totalcost
+        * mgmt._delta_disc
+        * (1 + mgmt._delta_disc) ** mgmt._amort
+        / ((1 + mgmt._delta_disc) ** mgmt._amort - 1)
+    )
+    tau_add = (
+        mgmt._amort
+        * tc_peryear
+        / np.sum(
+            mgmt._taxratio_OF * agentsame._I_OF * agent_of._price[t - 1]
+            + (1 - agentsame._I_OF) * agent_nof._price[t - 1]
+        )
+    )
+    tax_burden = (mgmt._amort) * (
+        tau_add * (1 - agentsame._I_OF) * agent_nof._price[t - 1]
+        + mgmt._taxratio_OF * tau_add * agentsame._I_OF * agent_of._price[t - 1]
+    )
 
     # create copies to evaluate market price
     # with and without the dunes/property tax increase
@@ -347,51 +376,31 @@ def calculate_evaluate_dunes(
 
     # risk premium withOUT dunes for non-oceanfront
     agent_nof_nodune = calculate_risk_premium(
-        time_index,
-        agent_nof_nodune,
-        modelforcing,
-        mgmt,
-        frontrow_on=False
+        time_index, agent_nof_nodune, modelforcing, mgmt, frontrow_on=False
     )
 
     # risk premium WITH dunes for non-oceanfront
     agent_nof_dune = calculate_risk_premium(
-        time_index,
-        agent_nof_dune,
-        modelforcing,
-        mgmt_dune,
-        frontrow_on=False
+        time_index, agent_nof_dune, modelforcing, mgmt_dune, frontrow_on=False
     )
 
     # risk premium withOUT dunes for oceanfront
     agent_of_nodune = calculate_risk_premium(
-        time_index,
-        agent_of_nodune,
-        modelforcing,
-        mgmt,
-        frontrow_on=True
+        time_index, agent_of_nodune, modelforcing, mgmt, frontrow_on=True
     )
 
     # risk premium WITH dunes for oceanfront
     agent_of_dune = calculate_risk_premium(
-        time_index,
-        agent_of_dune,
-        modelforcing,
-        mgmt_dune,
-        frontrow_on=True
+        time_index, agent_of_dune, modelforcing, mgmt_dune, frontrow_on=True
     )
 
     # forward simulate the oceanfront/nonoceanfront market values
     # withOUT dunes
     agent_of_nodune = calculate_user_cost(
-        time_index,
-        agent_of_nodune,
-        agent_of_nodune._tau_prop[t + 1]
+        time_index, agent_of_nodune, agent_of_nodune._tau_prop[t + 1]
     )
     agent_nof_nodune = calculate_user_cost(
-        time_index,
-        agent_nof_nodune,
-        agent_nof_nodune._tau_prop[t + 1]
+        time_index, agent_nof_nodune, agent_nof_nodune._tau_prop[t + 1]
     )
 
     # forward simulate the oceanfront/nonoceanfront market values
@@ -402,13 +411,11 @@ def calculate_evaluate_dunes(
         agent_of_dune._tau_prop[t + 1] + tau_add * mgmt._taxratio_OF,
     )
     agent_nof_dune = calculate_user_cost(
-        time_index,
-        agent_nof_dune,
-        agent_nof_dune._tau_prop[t + 1] + tau_add
+        time_index, agent_nof_dune, agent_nof_dune._tau_prop[t + 1] + tau_add
     )
 
     # agent index locations for nof/of in price_increase
-    nof_index = np.arange(0,agentsame._n_NOF)
+    nof_index = np.arange(0, agentsame._n_NOF)
     of_index = np.arange(agentsame._n_NOF, agentsame._n_agent_total)
 
     price_increase[nof_index] = agent_nof_dune._price[t] - agent_nof_nodune._price[t]
@@ -428,7 +435,7 @@ def calculate_evaluate_dunes(
 
     # if more than half of resident owners vote yes (1)
     # then build the dunes and update the property taxes
-    if tally_vote > 0.5 and mgmt._nourishtime[t+1] == 1:
+    if tally_vote > 0.5 and mgmt._nourishtime[t + 1] == 1:
         mgmt._builddunetime[t + 1] = 1
 
         agent_nof._tau_prop[t + 1 : t + mgmt._amort + 1] = (

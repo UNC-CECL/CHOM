@@ -1,9 +1,7 @@
 import numpy as np
 
 
-def calculate_risk_premium(
-    time_index, agent, modelforcing, mgmt, frontrow_on
-):
+def calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on):
     t = time_index
     a = 0.46
     b = 0.4
@@ -31,11 +29,11 @@ def calculate_risk_premium(
 
 def calculate_user_cost(time_index, agent, tau_prop):
     t = time_index
-    R = np.zeros(agent._n)
-    R_i = np.zeros(1)
-    P_O = np.zeros(agent._n)
-    P_bid = np.zeros(1)
-    owner_info = np.zeros(shape=(agent._n, 2))
+    # R = np.zeros(agent._n)
+    # R_i = np.zeros(1)
+    # P_o = np.zeros(agent._n)
+    # P_bid = np.zeros(1)
+    # owner_info = np.zeros(shape=(agent._n, 2))
     rent_store = np.zeros(agent._n)
     P_invest_store = np.zeros(agent._n)
     vacancies = np.zeros(agent._n)
@@ -99,7 +97,7 @@ def calculate_user_cost(time_index, agent, tau_prop):
     return agent
 
 
-def expected_capital_gains(time_index, agent, modelforcing, frontrow_on):
+def expected_capital_gains(time_index, agent):
 
     t = time_index
 
