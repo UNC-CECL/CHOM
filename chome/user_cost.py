@@ -2,6 +2,7 @@ import numpy as np
 
 
 def calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on):
+
     t = time_index
     a = 0.46
     b = 0.4
@@ -13,52 +14,54 @@ def calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on):
     else:
         of = 0
 
-    for ii in range(np.size(agent._rp_o)):
-        agent._rp_o[ii] = (
+    for ii in range(np.size(agent.rp_o)):
+        agent.rp_o[ii] = (
             (a + of * 0.02)
-            - b * modelforcing._barr_elev[t]
-            - c * mgmt._h_dune[t] * modelforcing._barr_elev[t]
-        ) + agent._rp_base[ii] * d
-    agent._rp_I = (
+            - b * modelforcing.barr_elev[t]
+            - c * mgmt.h_dune[t] * modelforcing.barr_elev[t]
+        ) + agent.rp_base[ii] * d
+    agent.rp_I = (
         (a + of * 0.02)
-        - b * modelforcing._barr_elev[t]
-        - c * mgmt._h_dune[t] * modelforcing._barr_elev[t]
+        - b * modelforcing.barr_elev[t]
+        - c * mgmt.h_dune[t] * modelforcing.barr_elev[t]
     ) + d
-    return agent
+
+    return
 
 
 def calculate_user_cost(time_index, agent, tau_prop):
+
     t = time_index
     # R = np.zeros(agent._n)
     # R_i = np.zeros(1)
     # P_o = np.zeros(agent._n)
     # P_bid = np.zeros(1)
     # owner_info = np.zeros(shape=(agent._n, 2))
-    rent_store = np.zeros(agent._n)
-    P_invest_store = np.zeros(agent._n)
-    vacancies = np.zeros(agent._n)
+    rent_store = np.zeros(agent.n)
+    P_invest_store = np.zeros(agent.n)
+    vacancies = np.zeros(agent.n)
 
-    R = agent._wtp + agent._HV
+    R = agent.wtp + agent.HV
     P_o = R / (
-        (agent._delta + tau_prop) * (1 - agent._tau_o)
-        + agent._gam
-        + agent._rp_o
-        - agent._g_o
+        (agent.delta + tau_prop) * (1 - agent.tau_o)
+        + agent.gam
+        + agent.rp_o
+        - agent.g_o
     )
     owner_info = np.column_stack((P_o, R))
     owner_info = owner_info[np.argsort(owner_info[:, 0])]
 
-    for i in range(0, agent._n):
-        P_bid = owner_info[i, 0] + agent._epsilon
+    for i in range(0, agent.n):
+        P_bid = owner_info[i, 0] + agent.epsilon
         R_i = (
             P_bid
             * (
-                (agent._delta + tau_prop) * (1 - agent._tau_c)
-                + agent._gam
-                + agent._rp_I
-                - agent._g_I
+                (agent.delta + tau_prop) * (1 - agent.tau_c)
+                + agent.gam
+                + agent.rp_I
+                - agent.g_I
             )
-            - agent._m
+            - agent.m
         )
 
         vacant = np.zeros(i)
@@ -84,17 +87,17 @@ def calculate_user_cost(time_index, agent, tau_prop):
         R_equ = results[ii, 1]
         P_equ = results[ii, 2]
         vac_check = results[ii, 0]
-        mkt_share_invest = (ii + 1) / agent._n
-        if ii == agent._n - 1:
+        mkt_share_invest = (ii + 1) / agent.n
+        if ii == agent.n - 1:
             vac_check = 1
         else:
             ii += 1
 
-    agent._price[t] = P_equ
-    agent._rent[t] = R_equ
-    agent._mkt[t] = mkt_share_invest
+    agent.price[t] = P_equ
+    agent.rent[t] = R_equ
+    agent.mkt[t] = mkt_share_invest
 
-    return agent
+    return
 
 
 def expected_capital_gains(time_index, agent):
@@ -106,13 +109,13 @@ def expected_capital_gains(time_index, agent):
     price_return = np.zeros(Lmax - Lmin + 1)
 
     if t > Lmax + 1:
-        price = agent._price[0:t]
+        price = agent.price[0:t]
 
         for L in range(Lmin, Lmax + 1):
             pricereturn_L = (price[t - 1] - price[t - 1 - L]) / price[t - 1 - L]
             price_return[L - Lmin] = (1 + pricereturn_L) ** (1 / L) - 1
 
-        agent._g_I = np.median(price_return)
-        agent._g_o = agent._g_o * 0 + price_return
+        agent.g_I = np.median(price_return)
+        agent.g_o = agent.g_o * 0 + price_return
 
-    return agent
+    return
