@@ -147,7 +147,7 @@ def agent_distribution_adjust(
     if agent.beta_x < 0:
         agent.beta_x = 0
 
-    [agent.tau_o, agent.WTP_base, agent.rp_base, agent.WTP_alph,] = agent_distribution(
+    [agent.tau_o, agent.WTP_base, agent.rp_base, agent.WTP_alph] = agent_distribution(
         agent.rcov,
         agent.range_WTP_base,
         agent.range_WTP_alph,
