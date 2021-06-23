@@ -1,5 +1,3 @@
-# import os
-
 import numpy as np
 
 from .agents import (
@@ -239,6 +237,7 @@ class Chome:
             self._time_index, self._agentsame, self._mgmt, self._modelforcing
         )
 
+        # these functions update the agent classes
         calculate_risk_premium(
             self._time_index,
             self._agent_nonoceanfront,
