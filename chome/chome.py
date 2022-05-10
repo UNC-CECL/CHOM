@@ -119,8 +119,10 @@ class Chome:
         barrier_island_height: int, optional
             Height of barrier island (meters) with respect to mean sea level
         average_interior_width: average interior width of barrier (meters)
-        house_footprint_x: def
-        house_footprint_y: def
+        house_footprint_x: int, optional
+            Length of house footprint in the cross-shore (meters)
+        house_footprint_y: int, optional
+            Length of house footprint in the alongshore (meters)
 
         Examples
         --------
