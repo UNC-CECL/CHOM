@@ -10,7 +10,7 @@ def evolve_environment(time_index, agentsame, mgmt, modelforcing):
     :param agentsame:
     :param mgmt:
     :param modelforcing:
-    :return:
+    :return: nourish_now, rebuild_dune_now:
 
     """
 

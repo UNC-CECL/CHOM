@@ -35,7 +35,7 @@ def agent_distribution(
     # dist = GaussianMultivariate()
     # sampled = dist.sample(1000)
 
-    beta_max = 10
+    beta_max = 200
     beta_min = 0.5
 
     bline2 = -1 * (beta_max - beta_min) * beta_x + beta_max
@@ -68,14 +68,13 @@ def agent_distribution(
         beta.ppf(U[:, 0], bline1, bline2),
         beta.ppf(U[:, 1], bline1, bline2),
         beta.ppf(U[:, 2], bline1, bline2),
-        beta.ppf(U[:, 3], 2, 2),
-        # beta.ppf(U[:, 3], bline1, bline2),
+        beta.ppf(U[:, 3], bline1, bline2),
     ]
 
     tau_o = X[0]
     WTP_base = X[1]
     WTP_alph = X[2]
-    rp_base = X[3]
+    rp_base = 1 - X[3]
 
     # rescale to property intervals
     tau_o = tau_o * (range_tau_o[1] - range_tau_o[0])
@@ -206,22 +205,22 @@ class Agents:
 
         self._T = T
         self._n = n
-        self._m = 1000
+        self._m = 2000
         self._delta = 0.06
         self._gam = 0.01
         self._HV = 25000
         self._epsilon = 1
         self._tau_c = 0.2
-        self._beta_x_feedbackparam = 1e-7
-        self._adjust_beta_x = 1e-8
+        self._beta_x_feedbackparam = 1e-6
+        self._adjust_beta_x = 1e-7
         self._rcov = 0.9
 
         # owner agent
         if frontrow_on:
-            self._range_WTP_base = [5000, 35000]
-            self._range_WTP_alph = [5000, 35000]
+            self._range_WTP_base = [self._HV, 3*self._HV]
+            self._range_WTP_alph = [0, 5000]
             self._range_tau_o = [0.05, 0.37]
-            self._beta_x = 0.69
+            self._beta_x = 0.5
             self._bta = 0.2
             if increasing_outside_market:
                 self._P_e = np.linspace(agentsame.P_e_OF, 3 * agentsame.P_e_OF, self._T)
@@ -229,10 +228,10 @@ class Agents:
                 self._P_e = agentsame.P_e_OF * np.ones(self._T)
 
         else:
-            self._range_WTP_base = [5000, 35000]
-            self._range_WTP_alph = [5000, 35000]
+            self._range_WTP_base = [self._HV, 3*self._HV]
+            self._range_WTP_alph = [0, 5000]
             self._range_tau_o = [0.05, 0.37]
-            self._beta_x = 0.46
+            self._beta_x = 0.1
             self._bta = 0.1
             if increasing_outside_market:
                 self._P_e = np.linspace(
@@ -241,7 +240,7 @@ class Agents:
             else:
                 self._P_e = agentsame.P_e_NOF * np.ones(self._T)
 
-        self._range_rp_base = [0.25, 1.25]
+        self._range_rp_base = [0.5, 1.1]
         self._rp_I = np.zeros(1)
         self._rp_o = np.zeros(self._n)
         self._tau_prop = 0.01 * np.ones(self._T)

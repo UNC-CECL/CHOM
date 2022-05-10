@@ -1,4 +1,5 @@
 import numpy as np
+# Zach, need to add descriptions below
 
 from .agents import (
     Agents,
@@ -28,12 +29,12 @@ from .chome_classes import (
 
 
 def calculate_total_number_agents(
-    average_interior_width, alongshore_domain_extent, house_footprint
+    average_interior_width, alongshore_domain_extent, house_footprint_x, house_footprint_y,
 ):
-    number_rows = np.floor(average_interior_width / house_footprint)
-    house_units_per_row = np.floor(alongshore_domain_extent / house_footprint)
+    number_rows = np.floor(average_interior_width / house_footprint_y)
+    house_units_per_row = np.floor(alongshore_domain_extent / house_footprint_x)
     total_number_agents = int(number_rows * house_units_per_row)
-    share_oceanfront = house_units_per_row / total_number_agents
+    share_oceanfront = 2*house_units_per_row / total_number_agents # multiply by 2 so to consider first 2 rows as oceanfront
 
     return total_number_agents, share_oceanfront
 
@@ -43,28 +44,29 @@ class Chome:
         self,
         name="default",
         total_time=400,
-        average_interior_width=100,  # Zach, need to add descriptions below
+        average_interior_width=300,  # Zach, need to add descriptions below
         barrier_island_height=1,
         beach_width=None,
         dune_height=None,
         shoreface_depth=10,
-        dune_width=4,
+        dune_width=25,
         dune_height_build=4,
         alongshore_domain_extent=3000,
-        shoreline_retreat_rate=4,
+        shoreline_retreat_rate=1,
         sand_cost=10,
         taxratio_oceanfront=3,
         external_housing_market_value_oceanfront=6e5,
         external_housing_market_value_nonoceanfront=4e5,
-        fixed_cost_beach_nourishment=2e6,
+        fixed_cost_beach_nourishment=1e6,
         fixed_cost_dune_nourishment=1e5,
-        nourishment_cost_subsidy=5e6,
-        house_footprint=10,  # Zach, need to add descriptions below
+        nourishment_cost_subsidy=0.9125,
+        house_footprint_x=15,
+        house_footprint_y=20,
         agent_expectations_time_horizon=30,
         agent_erosion_update_weight=0.5,
-        beach_width_beta_oceanfront=0.175,
-        beach_width_beta_nonoceanfront=0.1,
-        beach_full_cross_shore=100,
+        beach_width_beta_oceanfront=0.25,
+        beach_width_beta_nonoceanfront=0.15,
+        beach_full_cross_shore=70,
         discount_rate=0.06,
         nourishment_plan_loan_amortization_length=5,
         nourishment_plan_time_commitment=10,
@@ -111,6 +113,8 @@ class Chome:
         barrier_island_height: int, optional
             Height of barrier island (meters) with respect to mean sea level
         average_interior_width: average interior width of barrier (meters)
+        house_footprint_x: def
+        house_footprint_y: def
 
         Examples
         --------
@@ -121,12 +125,13 @@ class Chome:
         self._name = name
         self._time_index = 1
         self._nourishment_off = 0
-        self._increasing_outside_market = True
+        self._increasing_outside_market = False
 
         [total_number_agents, share_oceanfront] = calculate_total_number_agents(
             average_interior_width,
             alongshore_domain_extent,
-            house_footprint,
+            house_footprint_x,
+            house_footprint_y,
         )
         self._n = total_number_agents
         self._share_oceanfront = share_oceanfront

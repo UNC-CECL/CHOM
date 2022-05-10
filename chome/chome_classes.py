@@ -84,7 +84,7 @@ class ManagementParameters:
     ):
         # self._dune_sand_volume = None
         self._amort = nourishment_plan_loan_amortization_length
-        self._beach_plan = 11 + np.zeros(total_time)
+        self._beach_plan = (nourishment_plan_time_commitment + 1) + np.zeros(total_time)
         self._bta_NOF = beach_width_beta_nonoceanfront
         self._bta_OF = beach_width_beta_oceanfront
         self._builddunetime = np.zeros(total_time)
@@ -115,20 +115,18 @@ class ManagementParameters:
         self._delta_disc = discount_rate
         self._taxratio_OF = taxratio_oceanfront
         self._nourish_subsidy = nourishment_cost_subsidy
-        self._nourishment_menu_cost = np.zeros(11)
+        self._nourishment_menu_cost = np.zeros(nourishment_plan_time_commitment + 1)
         self._nourishment_menu_volumes = np.zeros(
-            shape=(11, agent_expectations_time_horizon)
+            shape=(nourishment_plan_time_commitment + 1, agent_expectations_time_horizon)
         )
-        self._nourishment_menu_bw = np.zeros(
-            shape=(11, agent_expectations_time_horizon)
-        )
-        self._nourishment_menu_add_tax = np.zeros(11)
-        self._nourishment_menu_totalcostperyear = np.zeros(11)
-        self._nourishment_menu_taxburden = np.zeros(shape=(total_number_agents, 11))
-        self._nourishment_pricelist = np.zeros(shape=(total_number_agents, 11))
+        self._nourishment_menu_bw = np.zeros(nourishment_plan_time_commitment + 1)
+        self._nourishment_menu_add_tax = np.zeros(nourishment_plan_time_commitment + 1)
+        self._nourishment_menu_totalcostperyear = np.zeros(nourishment_plan_time_commitment + 1)
+        self._nourishment_menu_taxburden = np.zeros(shape=(total_number_agents, nourishment_plan_time_commitment + 1))
+        self._nourishment_pricelist = np.zeros(shape=(total_number_agents, nourishment_plan_time_commitment + 1))
         self._dune_pricelist = np.zeros(shape=(total_number_agents, 2))
-        self._OF_plan_price = np.zeros(11)
-        self._NOF_plan_price = np.zeros(11)
+        self._OF_plan_price = np.zeros(nourishment_plan_time_commitment + 1)
+        self._NOF_plan_price = np.zeros(nourishment_plan_time_commitment + 1)
 
     @property
     def NOF_plan_price(self):
