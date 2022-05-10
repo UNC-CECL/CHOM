@@ -19,30 +19,30 @@ def evaluate_nourishment_future_beach_width(
     time_index, mgmt, agentsame, nourish_interval
 ):
     """
-        This is an explanation of what the hell this function does. I love to over explain things.
+    This is an explanation of what the hell this function does. I love to over explain things.
 
-        :param time_index: int, this is the time
-        :param agentsame:
-        :param mgmt:
-        :param nourish_interval:
-        :return:
+    :param time_index: int, this is the time
+    :param agentsame:
+    :param mgmt:
+    :param nourish_interval:
+    :return:
 
-        """
+    """
 
     t = time_index
     t_horiz = mgmt.expectation_horizon
     bw_future = np.zeros(t_horiz)
 
-    if nourish_interval != mgmt.nourish_plan_horizon+1:
+    if nourish_interval != mgmt.nourish_plan_horizon + 1:
         bw_future[0] = mgmt.x0
         nourish_xshore = np.zeros(t_horiz)
         nourishplan_new = np.zeros(t_horiz)
-        nourishplan_last = mgmt.nourishtime[t + 1: t + t_horiz + 1]
+        nourishplan_last = mgmt.nourishtime[t + 1 : t + t_horiz + 1]
         nourish_times = np.arange(0, mgmt.nourish_plan_horizon, nourish_interval)
         nourishplan_new[nourish_times] = 1
         planned_nourishment = nourishplan_last + nourishplan_new
     else:
-        nourishplan_last = mgmt.nourishtime[t + 1: t + t_horiz + 1]
+        nourishplan_last = mgmt.nourishtime[t + 1 : t + t_horiz + 1]
         bw_future[0] = mgmt.bw[t] - agentsame.E_ER[t]
         nourish_xshore = []
         nourish_times = []
@@ -51,13 +51,11 @@ def evaluate_nourishment_future_beach_width(
     for time in range(1, t_horiz):
         if planned_nourishment[time] == 1:
             bw_future[time] = mgmt.x0
-            nourish_xshore[time] = mgmt.x0 - (
-                bw_future[time - 1] - agentsame.E_ER[t]
-            )
+            nourish_xshore[time] = mgmt.x0 - (bw_future[time - 1] - agentsame.E_ER[t])
         else:
             bw_future[time] = bw_future[time - 1] - agentsame.E_ER[t]
 
-    bw_future = bw_future[0: mgmt.nourish_plan_horizon]
+    bw_future = bw_future[0 : mgmt.nourish_plan_horizon]
     bw_future[bw_future < 1] = 1
     if len(nourish_times) > 0:
         nourish_xshore = nourish_xshore[nourish_times]
@@ -67,7 +65,7 @@ def evaluate_nourishment_future_beach_width(
 
     mean_beach_width = np.average(bw_future)
 
-    if nourish_interval != mgmt.nourish_plan_horizon+1:
+    if nourish_interval != mgmt.nourish_plan_horizon + 1:
         nourish_xshore[0] = mgmt.x0 - mgmt.bw[t]
 
     return nourish_xshore, nourish_yr, mean_beach_width
@@ -98,7 +96,11 @@ def calculate_nourishment_plan_cost(
     for nourish_interval in range(0, nourish_plan_horizon + 1):
 
         i = nourish_interval
-        [nourish_xshore, nourish_yr, mean_beach_width] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, i + 1)
+        [
+            nourish_xshore,
+            nourish_yr,
+            mean_beach_width,
+        ] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, i + 1)
 
         if nourish_interval < nourish_plan_horizon:
             nourish_yr = nourish_yr + 1
@@ -108,7 +110,7 @@ def calculate_nourishment_plan_cost(
             )
             varcost = (sandcost * namount) / ((1 + delta) ** nourish_yr)
             mgmt.nourishment_menu_volumes[i, nourish_yr] = namount
-            mgmt.nourishment_menu_cost[i] = (1 - mgmt.nourish_subsidy)*(
+            mgmt.nourishment_menu_cost[i] = (1 - mgmt.nourish_subsidy) * (
                 np.sum(fcost) + np.sum(varcost)
             )
             mgmt.nourishment_menu_bw[i] = mean_beach_width
@@ -122,7 +124,6 @@ def calculate_nourishment_plan_cost(
             mgmt.nourishment_menu_cost[i] = 0
             mgmt.nourishment_menu_bw[i] = mean_beach_width
             mgmt.nourishment_menu_totalcostperyear[i] = 0
-
 
     for i in range(0, nourish_plan_horizon + 1):
         if mgmt.nourishment_menu_totalcostperyear[i] < 0:

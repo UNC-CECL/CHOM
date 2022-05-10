@@ -217,7 +217,7 @@ class Agents:
 
         # owner agent
         if frontrow_on:
-            self._range_WTP_base = [self._HV, 3*self._HV]
+            self._range_WTP_base = [self._HV, 3 * self._HV]
             self._range_WTP_alph = [0, 5000]
             self._range_tau_o = [0.05, 0.37]
             self._beta_x = 0.5
@@ -228,7 +228,7 @@ class Agents:
                 self._P_e = agentsame.P_e_OF * np.ones(self._T)
 
         else:
-            self._range_WTP_base = [self._HV, 3*self._HV]
+            self._range_WTP_base = [self._HV, 3 * self._HV]
             self._range_WTP_alph = [0, 5000]
             self._range_tau_o = [0.05, 0.37]
             self._beta_x = 0.1

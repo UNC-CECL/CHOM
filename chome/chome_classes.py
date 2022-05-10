@@ -117,13 +117,22 @@ class ManagementParameters:
         self._nourish_subsidy = nourishment_cost_subsidy
         self._nourishment_menu_cost = np.zeros(nourishment_plan_time_commitment + 1)
         self._nourishment_menu_volumes = np.zeros(
-            shape=(nourishment_plan_time_commitment + 1, agent_expectations_time_horizon)
+            shape=(
+                nourishment_plan_time_commitment + 1,
+                agent_expectations_time_horizon,
+            )
         )
         self._nourishment_menu_bw = np.zeros(nourishment_plan_time_commitment + 1)
         self._nourishment_menu_add_tax = np.zeros(nourishment_plan_time_commitment + 1)
-        self._nourishment_menu_totalcostperyear = np.zeros(nourishment_plan_time_commitment + 1)
-        self._nourishment_menu_taxburden = np.zeros(shape=(total_number_agents, nourishment_plan_time_commitment + 1))
-        self._nourishment_pricelist = np.zeros(shape=(total_number_agents, nourishment_plan_time_commitment + 1))
+        self._nourishment_menu_totalcostperyear = np.zeros(
+            nourishment_plan_time_commitment + 1
+        )
+        self._nourishment_menu_taxburden = np.zeros(
+            shape=(total_number_agents, nourishment_plan_time_commitment + 1)
+        )
+        self._nourishment_pricelist = np.zeros(
+            shape=(total_number_agents, nourishment_plan_time_commitment + 1)
+        )
         self._dune_pricelist = np.zeros(shape=(total_number_agents, 2))
         self._OF_plan_price = np.zeros(nourishment_plan_time_commitment + 1)
         self._NOF_plan_price = np.zeros(nourishment_plan_time_commitment + 1)
