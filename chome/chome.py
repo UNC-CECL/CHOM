@@ -111,14 +111,15 @@ class Chome:
         nourishment_plan_time_commitment: int, optional
             Time span of nourishment plan (i.e. multiple nourishments over multiple X years)
         beach_full_cross_shore: int, optional
-            The cross-shore extent (meters) of fully nourished beach
+            The cross-shore extent (meters) of fully nourished beach (i.e., the community desired beach width)
         discount_rate: float, optional
             Rate at which future flows of value are discounted
-        dune_height_build: int, optional
+        dune_height_build: float, optional
             Height (meters) of fully built dunes
-        barrier_island_height: int, optional
+        barrier_island_height: float, optional
             Height of barrier island (meters) with respect to mean sea level
-        average_interior_width: average interior width of barrier (meters)
+        average_interior_width: float, optional
+            average interior width of barrier (meters)
         house_footprint_x: int, optional
             Length of house footprint in the cross-shore (meters)
         house_footprint_y: int, optional
