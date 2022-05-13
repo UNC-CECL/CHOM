@@ -21,16 +21,16 @@ def load_test_cases(datadir):
     cases = []
     for inputs in data.flat:
         cases.append(
-            {
-                "dt": float(inputs["dt"]),
-                "dy": float(inputs["dy"]),
-                "x_shoreline": np.asarray(inputs["xs"][0][0], dtype=int).reshape(-1),
-                "wave_angle": np.asarray(
-                    inputs["wave_angle"][0][0], dtype=float
-                ).reshape(-1),
-                "inlet_age": np.squeeze(inputs["inlet_age"][0][0]),
-                "q_overwash": np.squeeze(inputs["Qoverwash"][0][0]),
-                "q_inlet": np.squeeze(inputs["Qinlet"][0][0]),
+            { # Z: on the left i put the python variable name, on the right i put the matlab variable name
+                # this can't be right, but these are the primary output that need to be similar
+                "chome._agent_oceanfront._price": np.asarray(inputs["X_OF.price"]).reshape(-1),
+                "chome._agent_nonoceanfront._price": np.asarray(inputs["X_NOF.price"]).reshape(-1),
+                "chome._agent_oceanfront._rent": np.asarray(inputs["X_OF.rent"]).reshape(-1),
+                "chome._agent_nonoceanfront._rent": np.asarray(inputs["X_NOF.rent"]).reshape(-1),
+                "chome._agent_oceanfront._mkt": np.asarray(inputs["X_OF.mkt"]).reshape(-1),
+                "chome._agent_nonoceanfront._mkt": np.asarray(inputs["X_NOF.mkt"]).reshape(-1),
+                "chome.beach_width": np.asarray(inputs["MMT.bw"][0], dtype=int).reshape(-1),
+                "chome.dune_height": np.asarray(inputs["MMT.h_dune"][0], dtype=int).reshape(-1),
             }
         )
     return cases

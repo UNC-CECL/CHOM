@@ -29,8 +29,8 @@ def calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on):
 
     t = time_index
     max_flood_days = 365
-    logistic_param_denom1 = 200
-    logistic_param_denom2 = 5
+    # logistic_param_denom1 = 200
+    # logistic_param_denom2 = 5
     storm_risk_param = 0.1
     dune_sealevel_param = 0.04
     front_row_risk_factor = 0.02
@@ -41,32 +41,26 @@ def calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on):
     else:
         of = 0
 
-    number_sunny_day_flood = max_flood_days / (
-        1
-        + logistic_param_denom1
-        * np.exp(-logistic_param_denom2 * modelforcing.barr_elev[t])
-    )
+    number_sunny_day_flood = 0 #max_flood_days * modelforcing.barr_elev[t]
     sunny_day_flood_premium = number_sunny_day_flood / max_flood_days
-    storm_risk_increases_with_sea_level = (
-        1 + storm_risk_param / modelforcing.barr_elev[t]
-    )
-    dunes_reduce_storm_risk = 1 - np.exp(
-        -dune_height_risk_param * (mgmt.h_dune[t] / mgmt.h0) ** 8
-    )
-    dune_premium = dune_sealevel_param * (
-        storm_risk_increases_with_sea_level - dunes_reduce_storm_risk
-    )
+    storm_risk_increases_with_sea_level = (1 + storm_risk_param / modelforcing.barr_elev[t])
+    dunes_reduce_storm_risk = 1 - np.exp(-dune_height_risk_param * (mgmt.h_dune[t] / mgmt.h0)**2)
+    dune_premium = dune_sealevel_param * (storm_risk_increases_with_sea_level - dunes_reduce_storm_risk)
     front_row_extra_risky = of * front_row_risk_factor
     investor_risk_tolerance = np.median(agent.rp_base)
 
-    for ii in range(agent.n):
-        agent.rp_o[ii] = agent.rp_base[ii] * (
-            sunny_day_flood_premium + dune_premium + front_row_extra_risky
-        )
+    # number_sunny_day_flood = max_flood_days / (1 + logistic_param_denom1 * np.exp(-logistic_param_denom2 * modelforcing.barr_elev[t]))
+    # sunny_day_flood_premium = number_sunny_day_flood / max_flood_days
+    # storm_risk_increases_with_sea_level = (1 + storm_risk_param / modelforcing.barr_elev[t])
+    # dunes_reduce_storm_risk = 1 - np.exp(-dune_height_risk_param * (mgmt.h_dune[t] / mgmt.h0) ** 8)
+    # dune_premium = dune_sealevel_param * (storm_risk_increases_with_sea_level - dunes_reduce_storm_risk)
+    # front_row_extra_risky = of * front_row_risk_factor
+    # investor_risk_tolerance = np.median(agent.rp_base)
 
-    agent.rp_I = investor_risk_tolerance * (
-        sunny_day_flood_premium + dune_premium + front_row_extra_risky
-    )
+    for ii in range(agent.n):
+        agent.rp_o[ii] = agent.rp_base[ii] * (sunny_day_flood_premium + dune_premium + front_row_extra_risky)
+
+    agent.rp_I = investor_risk_tolerance * (sunny_day_flood_premium + dune_premium + front_row_extra_risky)
 
     return
 
@@ -153,10 +147,14 @@ def expected_capital_gains(time_index, agent):
             annualized_return[year_interval - min_year] = (1 + cumulative_return) ** (
                 1 / year_interval
             ) - 1
+            if annualized_return[year_interval - min_year] > 0.25:
+                annualized_return[year_interval - min_year] = 0.25
+            if annualized_return[year_interval - min_year] < -0.25:
+                annualized_return[year_interval - min_year] = -0.25
 
         agent.g_I = np.median(annualized_return)
         # assign annualized returns randomly to agents
-        # agent.g_o = annualized[-1] * np.ones(agent.n)
+        # agent.g_o = annualized_return[-1] * np.ones(agent.n)
         agent.g_o = annualized_return[
             np.random.randint(max_year - min_year, size=agent.n)
         ]

@@ -38,8 +38,7 @@ def calculate_total_number_agents(
     number_rows = np.floor(average_interior_width / house_footprint_y)
     house_units_per_row = np.floor(alongshore_domain_extent / house_footprint_x)
     total_number_agents = int(number_rows * house_units_per_row)
-    share_oceanfront = (
-        2 * house_units_per_row / total_number_agents
+    share_oceanfront = (2 * house_units_per_row / total_number_agents
     )  # multiply by 2 so to consider first 2 rows as oceanfront
 
     return total_number_agents, share_oceanfront
