@@ -14,53 +14,69 @@ Notes
 import numpy as np
 
 
-def calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on):
+def calculate_risk_premium(
+    time_index, agent, modelforcing, mgmt, frontrow_on, height_above_msl=None
+):
     """
-    This is an explanation of what the hell this function does. I love to over explain things.
-
-    :param time_index: int, this is the time
-    :param agent:
-    :param mgmt:
-    :param modelforcing:
-    :param frontrow_on
-    :return:
-
+    Calculate the risk premiums for each agent due to changing storm risks due to sea level rise (lowering of the
+    barrier, dune height), sunny day floods, and being in the front row
     """
 
     t = time_index
     max_flood_days = 365
-    # logistic_param_denom1 = 200
-    # logistic_param_denom2 = 5
-    storm_risk_param = 0.1
-    dune_sealevel_param = 0.04
-    front_row_risk_factor = 0.02
-    dune_height_risk_param = 8
+    storm_risk_param = (
+        0.1  # controls how much the risk from storms increases with sea level
+    )
+    dune_sealevel_param = (
+        0.04  # just another knob that scales the dune height to convert to risk premium
+    )
+    front_row_risk_factor = (
+        0.02  # risk adjustment because it is riskier to be at the front of the barrier
+    )
+    dune_height_risk_param = 8  # tells you how much a higher dune reduces risk
 
     if frontrow_on:
         of = 1
     else:
         of = 0
 
-    number_sunny_day_flood = 0 #max_flood_days * modelforcing.barr_elev[t]
-    sunny_day_flood_premium = number_sunny_day_flood / max_flood_days
-    storm_risk_increases_with_sea_level = (1 + storm_risk_param / modelforcing.barr_elev[t])
-    dunes_reduce_storm_risk = 1 - np.exp(-dune_height_risk_param * (mgmt.h_dune[t] / mgmt.h0)**2)
-    dune_premium = dune_sealevel_param * (storm_risk_increases_with_sea_level - dunes_reduce_storm_risk)
+    # if the barrier height relative to MSL is not supplied, then calculate it
+    if height_above_msl is None:
+        height_above_msl = modelforcing.barr_elev[t] - modelforcing.msl[t]
+
+    # the number of sunny day floods scales with lowering of the barrier over time; we assume sunny day flooding only
+    # influences risk for barriers lower than 1 m above msl; NOTE: we added this if statement for CASCADE since
+    # height_above_msl often starts higher than 1 in Barrier3D
+    if height_above_msl < 1:
+        num_sunny_day_flood = 365 * (1 - height_above_msl)
+    else:
+        num_sunny_day_flood = 0
+    sunny_day_flood_premium = num_sunny_day_flood / max_flood_days
+
+    # the lower the barrier elevation, the higher the risk to storms
+    storm_risk_increases_with_sea_level = 1 + storm_risk_param / height_above_msl
+
+    # the lower the dune, the higher the risk to storms
+    dunes_reduce_storm_risk = 1 - np.exp(
+        -dune_height_risk_param * (mgmt.h_dune[t] / mgmt.h0) ** 2
+    )
+    dune_premium = dune_sealevel_param * (
+        storm_risk_increases_with_sea_level - dunes_reduce_storm_risk
+    )
+
+    # if you live in the front row, you have more risk
     front_row_extra_risky = of * front_row_risk_factor
     investor_risk_tolerance = np.median(agent.rp_base)
 
-    # number_sunny_day_flood = max_flood_days / (1 + logistic_param_denom1 * np.exp(-logistic_param_denom2 * modelforcing.barr_elev[t]))
-    # sunny_day_flood_premium = number_sunny_day_flood / max_flood_days
-    # storm_risk_increases_with_sea_level = (1 + storm_risk_param / modelforcing.barr_elev[t])
-    # dunes_reduce_storm_risk = 1 - np.exp(-dune_height_risk_param * (mgmt.h_dune[t] / mgmt.h0) ** 8)
-    # dune_premium = dune_sealevel_param * (storm_risk_increases_with_sea_level - dunes_reduce_storm_risk)
-    # front_row_extra_risky = of * front_row_risk_factor
-    # investor_risk_tolerance = np.median(agent.rp_base)
-
+    # now, given all the risks and premiums above, calculate the risk for each agent
     for ii in range(agent.n):
-        agent.rp_o[ii] = agent.rp_base[ii] * (sunny_day_flood_premium + dune_premium + front_row_extra_risky)
+        agent.rp_o[ii] = agent.rp_base[ii] * (
+            sunny_day_flood_premium + dune_premium + front_row_extra_risky
+        )
 
-    agent.rp_I = investor_risk_tolerance * (sunny_day_flood_premium + dune_premium + front_row_extra_risky)
+    agent.rp_I = investor_risk_tolerance * (
+        sunny_day_flood_premium + dune_premium + front_row_extra_risky
+    )
 
     return
 
