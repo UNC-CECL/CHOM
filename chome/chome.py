@@ -1,6 +1,5 @@
 import numpy as np
 
-# Zach, need to add descriptions below
 
 from .agents import (
     Agents,
@@ -38,7 +37,8 @@ def calculate_total_number_agents(
     number_rows = np.floor(average_interior_width / house_footprint_y)
     house_units_per_row = np.floor(alongshore_domain_extent / house_footprint_x)
     total_number_agents = int(number_rows * house_units_per_row)
-    share_oceanfront = (2 * house_units_per_row / total_number_agents
+    share_oceanfront = (
+        2 * house_units_per_row / total_number_agents
     )  # multiply by 2 so to consider first 2 rows as oceanfront
 
     return total_number_agents, share_oceanfront
@@ -49,7 +49,7 @@ class Chome:
         self,
         name="default",
         total_time=400,
-        average_interior_width=300,  # Zach, need to add descriptions below
+        average_interior_width=300,
         barrier_island_height=1,
         beach_width=None,
         dune_height=None,
@@ -76,53 +76,66 @@ class Chome:
         nourishment_plan_loan_amortization_length=5,
         nourishment_plan_time_commitment=10,
     ):
-        """Coastal Home Ownership Model CHOM
-        Parameters
+        """
+        Coastal Home Ownership Model
+
         ----------
         name: string, optional
             Name of simulation
         total_time: int, optional
-            Total time of simulation
-        beach_width_beta_oceanfront: float, optional
-            Hedonic beach width coefficient for oceanfront housing
-        beach_width_beta_nonoceanfront: float, optional
-            Hedonic beach width coefficient for non-oceanfront housing
-        taxratio_oceanfront: float, optional
-            The proportion of tax burden placed on oceanfront row for beach management
-        agent_erosion_update_weight: float, optional
-            Agent's perceived erosion rate update. 0=never update, 1=instantaneous erosion rate
-        sand_cost: int, optional
-            Unit cost of sand $/m^3
-        fixed_cost_beach_nourishment: int, optional
-            Fixed cost of 1 nourishment project
-        fixed_cost_dune_nourishment: int, optional
-            Fixed cost of building dunes once
-        nourishment_cost_subsidy: int, optional
-            Subsidy on cost of entire nourishment plan
-        external_housing_market_value_oceanfront:  , optional
-            Value of comparable housing option outside the coastal system
-        external_housing_market_value_nonoceanfront:  , optional
-            Value of comparable housing option outside the coastal system
-        agent_expectations_time_horizon: int, optional
-            Time horizon into past over which agent's consider physical environment
-        nourishment_plan_loan_amortization_length: int, optional
-            Number of years over which homeowners pay back nourishment cost
-        nourishment_plan_time_commitment: int, optional
-            Time span of nourishment plan (i.e. multiple nourishments over multiple X years)
-        beach_full_cross_shore: int, optional
-            The cross-shore extent (meters) of fully nourished beach (i.e., the community desired beach width)
-        discount_rate: float, optional
-            Rate at which future flows of value are discounted
-        dune_height_build: float, optional
-            Height (meters) of fully built dunes
-        barrier_island_height: float, optional
-            Height of barrier island (meters) with respect to mean sea level
+            Total time of simulation [yrs]
         average_interior_width: float, optional
-            average interior width of barrier (meters)
+            average interior width of barrier [m]]
+        barrier_island_height: float, optional
+            Height of barrier island with respect to mean sea level [m MSL]
+        beach_width: float, optional
+            Allows user to input a starting beach width; otherwise the model sets as beach_full_cross_shore [m]
+        dune_height: float, optional
+            Height of dune [m]
+        shoreface_depth: float, optional
+            Depth of shoreface below MSL [m]
+        dune_width: float, optional
+            Width of dune line [m]
+        dune_height_build: float, optional
+            Height dunes are rebuilt to [m]
+        alongshore_domain_extent: int, optional
+            The alongshore length of the domain [m]
+        shoreline_retreat_rate: float, optional
+            The rate of shoreline erosion [m/yr]
+        sand_cost: int, optional
+            Unit cost of sand [$USD/m^3]
+        taxratio_oceanfront: float, optional
+            The proportion of tax burden placed on oceanfront row for beach management [ratio, unitless]
+        external_housing_market_value_oceanfront: float, optional
+            Value of comparable housing option outside the coastal system [USD]
+        external_housing_market_value_nonoceanfront: float, optional
+            Value of comparable housing option outside the coastal system [USD]
+        fixed_cost_beach_nourishment: float, optional
+            Fixed cost of 1 nourishment project [USD]
+        fixed_cost_dune_nourishment: float, optional
+            Fixed cost of building dunes once [USD]
+        nourishment_cost_subsidy: float, optional
+            Subsidy on cost of entire nourishment plan [ratio]
         house_footprint_x: int, optional
-            Length of house footprint in the cross-shore (meters)
+            Length of house footprint in the cross-shore [m]
         house_footprint_y: int, optional
-            Length of house footprint in the alongshore (meters)
+            Length of house footprint in the alongshore [m]
+        agent_expectations_time_horizon: int, optional
+            Time horizon into past over which agent's consider physical environment [yrs]
+        agent_erosion_update_weight: float, optional
+            Agent's perceived erosion rate update. [0=never update : 1=instantaneous erosion rate]
+        beach_width_beta_oceanfront: float, optional
+            Hedonic beach width coefficient for oceanfront housing [unitless, exponent]
+        beach_width_beta_nonoceanfront: float, optional
+            Hedonic beach width coefficient for non-oceanfront housing [unitless, exponent]
+        beach_full_cross_shore: int, optional
+            The cross-shore extent of fully nourished beach (i.e., the community desired beach width) [m]
+        discount_rate: float, optional
+            Rate at which future flows of value are discounted [exponent, unitless]
+        nourishment_plan_loan_amortization_length: int, optional
+            Time over which homeowners pay back nourishment cost [yrs]
+        nourishment_plan_time_commitment: int, optional
+            Time span of nourishment plan (i.e. multiple nourishments over multiple X years) [yrs]
 
         Examples
         --------
@@ -143,6 +156,9 @@ class Chome:
         )
         self._n = total_number_agents
         self._share_oceanfront = share_oceanfront
+
+        # for model coupling with CASCADE
+        self._height_above_msl = None  # barrier elevation relative to MSL = 0
 
         ###############################################################################
         # share subsets of the variables in different classes for easy passing
@@ -197,7 +213,7 @@ class Chome:
             total_time,
         )
 
-        # time series for tracking nourishment and dune rebuild
+        # track nourishment and dune rebuilds
         self._nourish_now = np.zeros(total_time)
         self._rebuild_dune_now = np.zeros(total_time)
 
@@ -213,6 +229,7 @@ class Chome:
             self._increasing_outside_market,
             frontrow_on=True,
         )
+
         # define the back row homes
         self._agent_nonoceanfront = Agents(  # also includes former X_NOF variables
             total_time,
@@ -223,26 +240,30 @@ class Chome:
         )
 
     def update(self):
-        """Update Chome by a single time step"""
+        """
+        Update CHOME by a single time step. CHOME is initialize at time_index=0 and then the model update loop begins
+        at time_index=1 (the Matlab version initializes at time_index=1 and starts update loop at time_index=2)
+        """
 
-        # Znote: I've re-written this to be simpler
-        # number of NOF units owned by residents = n1, number of NOF units owned by investor = n_NOF - n1
-        # number of OF  units owned by residents = n2, number of OF units  owned by investor = n_OF - n1
+        # update the pool of agents for nourishment voting
         n1 = round(
             self._agentsame.n_NOF
-            * (1 - self._agent_nonoceanfront.mkt[self._time_index - 1])
-        )
-        n2 = round(
-            self._agentsame.n_OF
-            * (1 - self._agent_oceanfront.mkt[self._time_index - 1])
-        )
-        self._agentsame.I_own = np.zeros(self._agentsame.n_NOF + self._agentsame.n_OF)
+            * (1 - self._agent_nonoceanfront.mkt[self._time_index])
+        )  # n1 = number of NOF units owned by residents (number of NOF units owned by investor = n_NOF - n1)
         nof_indices = np.arange(self._agentsame.n_NOF)
+
+        n2 = round(
+            self._agentsame.n_OF * (1 - self._agent_oceanfront.mkt[self._time_index])
+        )  # n2 = number of OF units owned by residents (number of OF units owned by investor = n_OF - n1)
         of_indices = self._agentsame.n_NOF + np.arange(self._agentsame.n_OF)
+
+        # list of agents that can vote on nourishment: owner = 1, investor = 0 -- only owners can vote
+        self._agentsame.I_own = np.zeros(self._agentsame.n_NOF + self._agentsame.n_OF)
         self._agentsame.I_own[nof_indices[0:n1]] = 1
         self._agentsame.I_own[of_indices[0:n2]] = 1
 
-        # updates mgmt, agentsame to evolve the environment
+        # nourish the beach and rebuild the dune; if not a nourishment or rebuilding year, just erode the beach and
+        # the dunes
         [
             self._nourish_now[self._time_index],
             self._rebuild_dune_now[self._time_index],
@@ -257,6 +278,7 @@ class Chome:
             self._modelforcing,
             self._mgmt,
             frontrow_on=False,
+            height_above_msl=self._height_above_msl,
         )
 
         calculate_risk_premium(
@@ -411,6 +433,14 @@ class Chome:
     @beach_width.setter
     def beach_width(self, value):
         self._mgmt.bw = value
+
+    @property
+    def height_above_msl(self):
+        return self._height_above_msl  # barrier elevation relative to MSL=0
+
+    @height_above_msl.setter
+    def height_above_msl(self, value):
+        self._height_above_msl = value
 
     @property
     def bw_erosion_rate(self):
