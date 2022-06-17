@@ -1,5 +1,5 @@
 =====
-CHOME
+CHOM
 =====
 
-The Coastal HOusing ModEl (CHOME)
+The Coastal HOusing ModEl (CHOM)

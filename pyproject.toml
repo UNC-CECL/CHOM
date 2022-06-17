@@ -1,6 +1,6 @@
 [tool.pytest.ini_options]
 minversion = "5.0"
-testpaths = ["chome", "tests"]
+testpaths = ["chom", "tests"]
 norecursedirs = [".*", "*.egg*", "build", "dist"]
 addopts = """
     --ignore setup.py

@@ -13,13 +13,13 @@ long_description = u"\n\n".join(
 
 
 setup(
-    name="chome",
+    name="chom",
     version="0.0.1.dev0",
     description="The Coastal Housing Model",
     long_description=long_description,
     author="Zack Williams",
     author_email="williamsz@uncw.edu",
-    url="https://github.com/UNC-CECL/chome",
+    url="https://github.com/UNC-CECL/chom",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",

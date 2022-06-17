@@ -20,7 +20,7 @@ from .user_cost import (
     calculate_user_cost,
     expected_capital_gains,
 )
-from .chome_classes import (
+from .chom_classes import (
     ModelParameters,
     ManagementParameters,
     AgentCommon,
@@ -44,7 +44,7 @@ def calculate_total_number_agents(
     return total_number_agents, share_oceanfront
 
 
-class Chome:
+class Chom:
     def __init__(
         self,
         name="default",
@@ -139,8 +139,8 @@ class Chome:
 
         Examples
         --------
-        >>> from chome import Chome
-        >>> chome = Chome()
+        >>> from chom import Chom
+        >>> chom = Chom()
         """
 
         self._name = name
@@ -241,7 +241,7 @@ class Chome:
 
     def update(self):
         """
-        Update CHOME by a single time step. CHOME is initialize at time_index=0 and then the model update loop begins
+        Update CHOM by a single time step. CHOM is initialize at time_index=0 and then the model update loop begins
         at time_index=1 (the Matlab version initializes at time_index=1 and starts update loop at time_index=2)
         """
 
@@ -407,10 +407,10 @@ class Chome:
     # def save(self, directory):
     #     filename = self._filename + ".npz"
     #
-    #     chome = [self]
+    #     chom = [self]
     #
     #     os.chdir(directory)
-    #     np.savez(filename, chome=chome)
+    #     np.savez(filename, chom=chom)
 
     @property
     def time_index(self):
