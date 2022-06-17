@@ -1,5 +1,5 @@
 =====
-CHOM
+C-HOM
 =====
 
-The Coastal HOusing ModEl (CHOM)
+The Coastal HOusing Model (C-HOM)
