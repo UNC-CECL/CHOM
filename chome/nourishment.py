@@ -40,7 +40,9 @@ def evaluate_nourishment_future_beach_width(
         nourishplan_last = mgmt.nourishtime[t + 1 : t + t_horiz + 1]
         nourish_times = np.arange(0, mgmt.nourish_plan_horizon, nourish_interval)
         nourishplan_new[nourish_times] = 1
-        planned_nourishment = nourishplan_last + nourishplan_new # z question to self: does this account for overlapping nourishments - does this get assigned 2's ever?
+        planned_nourishment = (
+            nourishplan_last + nourishplan_new
+        )  # z question to self: does this account for overlapping nourishments - does this get assigned 2's ever?
     else:
         nourishplan_last = mgmt.nourishtime[t + 1 : t + t_horiz + 1]
         bw_future[0] = mgmt.bw[t] - agentsame.E_ER[t]
@@ -49,7 +51,7 @@ def evaluate_nourishment_future_beach_width(
         planned_nourishment = nourishplan_last
 
     for time in range(1, t_horiz):
-        if planned_nourishment[time] == 1:        # if planned_nourishment[time] > 0:
+        if planned_nourishment[time] == 1:  # if planned_nourishment[time] > 0:
             bw_future[time] = mgmt.x0
             nourish_xshore[time] = mgmt.x0 - (bw_future[time - 1] - agentsame.E_ER[t])
         else:
