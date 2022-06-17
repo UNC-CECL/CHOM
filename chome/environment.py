@@ -4,27 +4,25 @@ import copy as copy
 
 def evolve_environment(time_index, agentsame, mgmt, modelforcing):
     """
-    This is an explanation of what the hell this function does. I love to over explain things.
-
-    :param time_index: int, this is the time
-    :param agentsame:
-    :param mgmt:
-    :param modelforcing:
-    :return: nourish_now, rebuild_dune_now:
-
+    Nourish the beach and rebuild the dune; if not a nourishment or rebuilding year, just erode the beach and the dunes
     """
 
     t = time_index
     nourish_now = 0  # initialize nourishment and dune rebuild trackers as false
     rebuild_dune_now = 0
 
-    if mgmt.nourishtime[t] == 1:  # if nourish is scheduled
+    # nourishment decision -------------------------------------------------------------------
+    # if nourishment is scheduled, nourish!
+    if mgmt.nourishtime[t] == 1:
         mgmt.bw[t] = mgmt.x0  # set beach width to desired beach width
         nourish_now = 1  # track when nourishment occurs
-    elif (
-        mgmt.bw[t] != 0
-    ):  # if beach width is already specified (if coupled with another model), then don't modify
+
+    # otherwise, don't nourish -----------
+    # if beach width is already specified for this time step, that means this value came from CASCADE
+    # and the beach has already been eroded, so just skip
+    elif mgmt.bw[t] != 0:
         pass
+    # but if the beach width is not specified, that means the model isn't coupled, and we need eroded the beach
     else:
         mgmt.bw[t] = mgmt.bw[t - 1] - modelforcing.ER[t]
 
@@ -34,21 +32,26 @@ def evolve_environment(time_index, agentsame, mgmt, modelforcing):
         + (1 - agentsame.theta_er) * agentsame.E_ER[t - 1]
     )
 
-    if mgmt.builddunetime[t] == 1:  # if dune build is scheduled
-        mgmt.h_dune[t] = mgmt.h0  # then build it back up
-        rebuild_dune_now = 1  # track when dune building occurs
-    elif (
-        mgmt.h_dune[t] != 0
-    ):  # if dune_height is already specified (if coupled with another model), then don't modify
-        pass
-    else:
-        mgmt.h_dune[t] = (
-            mgmt.h_dune[t - 1] - 0.1
-        )  # erode the dune slightly from the last time step
-
+    # if the beach width is less than 1, don't let it become negative
     if mgmt.bw[t] < 1:
         mgmt.bw[t] = 1
 
+    # rebuild dune decision -------------------------------------------------------------------
+    # if dune build is scheduled, rebuild dune
+    if mgmt.builddunetime[t] == 1:
+        mgmt.h_dune[t] = mgmt.h0  # set dune height to desired dune height
+        rebuild_dune_now = 1  # track when dune building occurs
+
+    # otherwise, don't rebuild dune -----------
+    # if dune_height is already specified for this time step, that means this value came from CASCADE, so just skip
+    elif mgmt.h_dune[t] != 0:
+        pass
+    # but if the dune height is not specified, that means the model isn't coupled, and we need eroded the dune slightly
+    # from the last time step
+    else:
+        mgmt.h_dune[t] = mgmt.h_dune[t - 1] - 0.1
+
+    # if the dune height is less than 1, don't let it become negative
     if mgmt.h_dune[t] < 0.1:
         mgmt.h_dune[t] = 0.1
 
