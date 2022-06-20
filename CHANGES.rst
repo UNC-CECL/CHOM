@@ -1,5 +1,5 @@
 ===================
-Changelog for chome
+Changelog for chom
 ===================
 
 ******************

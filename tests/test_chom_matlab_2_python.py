@@ -10,14 +10,14 @@ import numpy as np
 import pytest
 from scipy.io import loadmat
 
-from chom import Chome
+from chom import Chom
 
 
 DATA_DIR = pathlib.Path(__file__).parent / "test_chom_matlab_2_python"
 
 # import matfile with run output you will be comparing to the python version
 def load_test_cases(datadir):
-    data = loadmat(datadir / "test_chome_cascade_parameters.mat")["output"]
+    data = loadmat(datadir / "test_chom_cascade_parameters.mat")["output"]
     cases = []
     # for inputs in data.flat:
     #     cases.append(
@@ -67,8 +67,8 @@ def test_case(request):
 def run_brie(n_steps, dt, dy, x_shoreline, wave_angle):
     total_time = 50
 
-    chome = Chome(
-        name="chome_test",
+    chom = Chom(
+        name="chom_test",
         total_time=total_time,
         average_interior_width=388.2,  # default is 300
         barrier_island_height=1.09,  # 1
@@ -101,9 +101,9 @@ def run_brie(n_steps, dt, dy, x_shoreline, wave_angle):
     )
 
     for _ in range(total_time - 1):
-        chome.update()  # update the model by a time step
+        chom.update()  # update the model by a time step
 
-    return chome
+    return chom
 
 
 # compare the output
