@@ -9,13 +9,18 @@ class ModelParameters:
         shoreline_retreat_rate,
         total_number_agents,
         barrier_island_height,
+        sea_level_rise_rate,
     ):
 
         self._T = total_time + nourishment_plan_time_commitment
         self._ER = shoreline_retreat_rate + np.zeros(self._T)
         self._RNG = np.random.default_rng(seed=total_number_agents)
         self._Tfinal = self._T - nourishment_plan_time_commitment
-        self._barr_elev = barrier_island_height + np.zeros(self._T)
+        self._barr_height = np.zeros(
+            self._T
+        )  # we subtract MSL from this each time step
+        self._barr_height[0] = barrier_island_height
+        self._mean_sea_level = np.arange(0, self._T) * sea_level_rise_rate
 
     @property
     def T(self):

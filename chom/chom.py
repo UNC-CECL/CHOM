@@ -58,6 +58,7 @@ class Chom:
         dune_height_build=4,
         alongshore_domain_extent=3000,
         shoreline_retreat_rate=1,
+        sea_level_rise_rate=0.004,
         sand_cost=10,
         taxratio_oceanfront=3,
         external_housing_market_value_oceanfront=6e5,
@@ -87,7 +88,7 @@ class Chom:
         average_interior_width: float, optional
             average interior width of barrier [m]]
         barrier_island_height: float, optional
-            Height of barrier island with respect to mean sea level [m MSL]
+            Height of barrier island with respect to mean sea level [m MSL] -- assumes you start at 0 m MSL
         beach_width: float, optional
             Allows user to input a starting beach width; otherwise the model sets as beach_full_cross_shore [m]
         dune_height: float, optional
@@ -102,6 +103,8 @@ class Chom:
             The alongshore length of the domain [m]
         shoreline_retreat_rate: float, optional
             The rate of shoreline erosion [m/yr]
+        sea_level_rise_rate: float, optional
+            The rate of SLR [m/yr]
         sand_cost: int, optional
             Unit cost of sand [$USD/m^3]
         taxratio_oceanfront: float, optional
@@ -157,9 +160,6 @@ class Chom:
         self._n = total_number_agents
         self._share_oceanfront = share_oceanfront
 
-        # for model coupling with CASCADE
-        self._height_above_msl = None  # barrier elevation relative to MSL = 0
-
         ###############################################################################
         # share subsets of the variables in different classes for easy passing
         ###############################################################################
@@ -170,6 +170,7 @@ class Chom:
             shoreline_retreat_rate,
             total_number_agents,
             barrier_island_height,
+            sea_level_rise_rate,
         )
 
         self._mgmt = ManagementParameters(
@@ -271,14 +272,14 @@ class Chom:
             self._time_index, self._agentsame, self._mgmt, self._modelforcing
         )
 
-        # these functions update the agent classes
+        # calculate the risk premiums, first non-oceanfront then oceanfront agents, for changing storm risks due to
+        # sea level rise (lowering of the barrier, dune height), sunny day floods, and being in the front row
         calculate_risk_premium(
             self._time_index,
             self._agent_nonoceanfront,
             self._modelforcing,
             self._mgmt,
             frontrow_on=False,
-            height_above_msl=self._height_above_msl,
         )
 
         calculate_risk_premium(
@@ -417,14 +418,14 @@ class Chom:
         return self._time_index
 
     @property
-    def barr_elev(self):
+    def barr_height(self):
         return (
-            self._modelforcing.barr_elev
-        )  # Barrier elevation, this was a scalar is now a time series
+            self._modelforcing.barr_height
+        )  # Barrier height [m MSL], this was a scalar is now a time series
 
-    @barr_elev.setter
-    def barr_elev(self, value):
-        self._modelforcing.barr_elev = value
+    @barr_height.setter
+    def barr_height(self, value):
+        self._modelforcing.barr_height = value
 
     @property
     def beach_width(self):

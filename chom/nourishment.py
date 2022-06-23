@@ -76,16 +76,29 @@ def evaluate_nourishment_future_beach_width(
 def calculate_nourishment_plan_cost(
     time_index, agentsame, mgmt, modelforcing, agent_of, agent_nof
 ):
+    """
+
+
+    :param time_index: the time index
+    :param agentsame: class with variables that are the same between both sets of agents (ocean front and non-OF)
+    :param mgmt: class containing human management variables
+    :param modelforcing: class of modeling (environmental) forcing parameters
+    :param agent_of: class containing ocean front agents
+    :param agent_nof: class containing non-ocean front agents
+
+    """
+
     t = time_index
-    I_OF = agentsame.I_OF
-    Llength = mgmt.lLength
-    sandcost = mgmt.sandcost
-    barrier_toedepth = mgmt.Ddepth
-    fixedcost = mgmt.fixedcost_beach
-    nourish_plan_horizon = mgmt.nourish_plan_horizon
-    delta = mgmt.delta_disc
+    alongshore_barrier_length = mgmt.lLength
+    shoreface_depth = mgmt.Ddepth
+    fixed_cost_bulldoze = (
+        mgmt.fixedcost_beach
+    )  # fixed cost ass. with nourishment (permits, bulldozer, you name it)
+    delta = mgmt.delta_disc  # KA: left off here
     amort = mgmt.amort
-    barrier_height = modelforcing.barr_elev[t]
+    barrier_height_msl = modelforcing.barr_height[
+        t
+    ]  # has already been updated this time step for SLR
 
     mgmt.nourishment_menu_volumes = 0 * mgmt.nourishment_menu_volumes
     mgmt.nourishment_menu_bw = 0 * mgmt.nourishment_menu_bw
@@ -95,7 +108,7 @@ def calculate_nourishment_plan_cost(
     # calculate costs and tax rate for various nourishment intervals for nourishing every 1 - 10 years
     # index describes nourishing every (nourishment interval + 1) years the case of no nourishment is
     #  indexed as nourishment interval = 10 (+1)
-    for nourish_interval in range(0, nourish_plan_horizon + 1):
+    for nourish_interval in range(0, mgmt.nourish_plan_horizon + 1):
 
         i = nourish_interval
         [
@@ -104,13 +117,13 @@ def calculate_nourishment_plan_cost(
             mean_beach_width,
         ] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, i + 1)
 
-        if nourish_interval < nourish_plan_horizon:
+        if nourish_interval < mgmt.nourish_plan_horizon:
             nourish_yr = nourish_yr + 1
-            fcost = fixedcost / ((1 + delta) ** nourish_yr)
-            namount = Llength * (
-                nourish_xshore * (2 * barrier_height + barrier_toedepth) / 2
+            fcost = fixed_cost_bulldoze / ((1 + delta) ** nourish_yr)
+            namount = alongshore_barrier_length * (
+                nourish_xshore * (2 * barrier_height_msl + shoreface_depth) / 2
             )
-            varcost = (sandcost * namount) / ((1 + delta) ** nourish_yr)
+            varcost = (mgmt.sandcost * namount) / ((1 + delta) ** nourish_yr)
             mgmt.nourishment_menu_volumes[i, nourish_yr] = namount
             mgmt.nourishment_menu_cost[i] = (1 - mgmt.nourish_subsidy) * (
                 np.sum(fcost) + np.sum(varcost)
@@ -127,22 +140,24 @@ def calculate_nourishment_plan_cost(
             mgmt.nourishment_menu_bw[i] = mean_beach_width
             mgmt.nourishment_menu_totalcostperyear[i] = 0
 
-    for i in range(0, nourish_plan_horizon + 1):
+    for i in range(0, mgmt.nourish_plan_horizon + 1):
         if mgmt.nourishment_menu_totalcostperyear[i] < 0:
             mgmt.nourishment_menu_totalcostperyear[i] = 0
         mgmt.nourishment_menu_add_tax[i] = (
             amort
             * mgmt.nourishment_menu_totalcostperyear[i]
             / np.sum(
-                mgmt.taxratio_OF * I_OF * agent_of.price[t - 1]
-                + (1 - I_OF) * agent_nof.price[t - 1]
+                mgmt.taxratio_OF * agentsame.I_OF * agent_of.price[t - 1]
+                + (1 - agentsame.I_OF) * agent_nof.price[t - 1]
             )
         )
         mgmt.nourishment_menu_taxburden[:, i] = amort * (
-            mgmt.nourishment_menu_add_tax[i] * (1 - I_OF) * agent_nof.price[t - 1]
+            mgmt.nourishment_menu_add_tax[i]
+            * (1 - agentsame.I_OF)
+            * agent_nof.price[t - 1]
             + mgmt.taxratio_OF
             * mgmt.nourishment_menu_add_tax[i]
-            * I_OF
+            * agentsame.I_OF
             * agent_of.price[t - 1]
         )
 

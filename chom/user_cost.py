@@ -14,12 +14,17 @@ Notes
 import numpy as np
 
 
-def calculate_risk_premium(
-    time_index, agent, modelforcing, mgmt, frontrow_on, height_above_msl=None
-):
+def calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on):
     """
-    Calculate the risk premiums for each agent due to changing storm risks due to sea level rise (lowering of the
-    barrier, dune height), sunny day floods, and being in the front row
+        Calculate the risk premiums for each agent due to changing storm risks due to sea level rise (lowering of the
+        barrier, dune height), sunny day floods, and being in the front row
+
+    :param time_index: the time index
+    :param agent: class containing either the ocean front agents (agent_of) or non-ocean front (agent_nof)
+    :param modelforcing: class of modeling (environmental) forcing parameters
+    :param mgmt: class containing human management variables
+    :param frontrow_on: boolean that specifies ocean front or non-ocean front
+
     """
 
     t = time_index
@@ -40,21 +45,24 @@ def calculate_risk_premium(
     else:
         of = 0
 
-    # if the barrier height relative to MSL is not supplied, then calculate it
-    if height_above_msl is None:
-        height_above_msl = modelforcing.barr_elev[t] - modelforcing.msl[t]
+    # if the barrier height relative to MSL is not supplied through model coupling, then calculate it by subtracting the
+    # sea level change
+    if modelforcing.barr_height[t] > 0:
+        modelforcing.barr_height[t] = modelforcing.barr_height[0] - modelforcing.msl[t]
 
     # the number of sunny day floods scales with lowering of the barrier over time; we assume sunny day flooding only
     # influences risk for barriers lower than 1 m above msl; NOTE: we added this if statement for CASCADE since
     # height_above_msl often starts higher than 1 in Barrier3D
-    if height_above_msl < 1:
-        num_sunny_day_flood = 365 * (1 - height_above_msl)
+    if modelforcing.barr_height[t] < 1:
+        num_sunny_day_flood = 365 * (1 - modelforcing.barr_height[t])
     else:
         num_sunny_day_flood = 0
     sunny_day_flood_premium = num_sunny_day_flood / max_flood_days
 
     # the lower the barrier elevation, the higher the risk to storms
-    storm_risk_increases_with_sea_level = 1 + storm_risk_param / height_above_msl
+    storm_risk_increases_with_sea_level = (
+        1 + storm_risk_param / modelforcing.barr_height[t]
+    )
 
     # the lower the dune, the higher the risk to storms
     dunes_reduce_storm_risk = 1 - np.exp(
