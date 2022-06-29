@@ -47,8 +47,10 @@ def calculate_risk_premium(time_index, agent, modelforcing, mgmt, frontrow_on):
 
     # if the barrier height relative to MSL is not supplied through model coupling, then calculate it by subtracting the
     # sea level change
-    if modelforcing.barr_height[t] > 0:
-        modelforcing.barr_height[t] = modelforcing.barr_height[0] - modelforcing.msl[t]
+    if modelforcing.barr_height[t] == 0:
+        modelforcing.barr_height[t] = (
+            modelforcing.barr_height[0] - modelforcing.mean_sea_level[t]
+        )
 
     # the number of sunny day floods scales with lowering of the barrier over time; we assume sunny day flooding only
     # influences risk for barriers lower than 1 m above msl; NOTE: we added this if statement for CASCADE since
