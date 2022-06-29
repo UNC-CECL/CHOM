@@ -56,23 +56,23 @@ class Chom:
         shoreface_depth=10,
         dune_width=25,
         dune_height_build=4,
-        alongshore_domain_extent=3000,
-        shoreline_retreat_rate=1,
-        sea_level_rise_rate=0.004,
+        alongshore_domain_extent=17000,
+        shoreline_retreat_rate=1.25,
+        sea_level_rise_rate=0.0025,
         sand_cost=10,
         taxratio_oceanfront=3,
-        external_housing_market_value_oceanfront=6e5,
+        external_housing_market_value_oceanfront=5e5,
         external_housing_market_value_nonoceanfront=4e5,
         fixed_cost_beach_nourishment=1e6,
         fixed_cost_dune_nourishment=1e5,
-        nourishment_cost_subsidy=0.9125,
-        house_footprint_x=15,
-        house_footprint_y=20,
+        nourishment_cost_subsidy=0.9,
+        house_footprint_x=50,
+        house_footprint_y=25,
         agent_expectations_time_horizon=30,
         agent_erosion_update_weight=0.5,
-        beach_width_beta_oceanfront=0.25,
-        beach_width_beta_nonoceanfront=0.15,
-        beach_full_cross_shore=70,
+        beach_width_beta_oceanfront=0.2,
+        beach_width_beta_nonoceanfront=0.1,
+        beach_full_cross_shore=50,
         discount_rate=0.06,
         nourishment_plan_loan_amortization_length=5,
         nourishment_plan_time_commitment=10,
@@ -92,7 +92,7 @@ class Chom:
         beach_width: float, optional
             Allows user to input a starting beach width; otherwise the model sets as beach_full_cross_shore [m]
         dune_height: float, optional
-            Height of dune [m]
+            Allows user to input a starting dune height; otherwise the model sets as dune_height_build [m]
         shoreface_depth: float, optional
             Depth of shoreface below MSL [m]
         dune_width: float, optional
@@ -290,6 +290,7 @@ class Chom:
             frontrow_on=True,
         )
 
+        # KA: this is where we left off
         calculate_nourishment_plan_cost(
             self._time_index,
             self._agentsame,
