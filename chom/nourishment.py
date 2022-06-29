@@ -19,39 +19,46 @@ def evaluate_nourishment_future_beach_width(
     time_index, mgmt, agentsame, nourish_interval
 ):
     """
-    This is an explanation of what the hell this function does. I love to over explain things.
+    This function creates a time series of what agents EXPECT the beach to look like for a given nourishment interval
+    and beach erosion rate, over the nourishment plan horizon. The agents are only committed to paying for the first ten
+    years (not in this function, but good to know).
 
-    :param time_index: int, this is the time
-    :param agentsame:
-    :param mgmt:
-    :param nourish_interval:
+    :param time_index: the time index
+    :param agentsame: class with variables that are the same between both sets of agents (ocean front and non-OF)
+    :param mgmt: class containing human management variables
+    :param nourish_interval: beach nourishment interval [yrs]
     :return:
+        nourish_xshore - cross shore volume per each nourishment episode [here m, later m^3]
+        nourish_yr - years that nourishment will occur
+        mean_beach_width - in meters
 
     """
 
     t = time_index
-    t_horiz = mgmt.expectation_horizon
-    bw_future = np.zeros(t_horiz)
+    bw_future = np.zeros(mgmt.expectation_horizon)
 
     if nourish_interval != mgmt.nourish_plan_horizon + 1:
         bw_future[0] = mgmt.x0
-        nourish_xshore = np.zeros(t_horiz)
-        nourishplan_new = np.zeros(t_horiz)
-        nourishplan_last = mgmt.nourishtime[t + 1 : t + t_horiz + 1]
+        nourish_xshore = np.zeros(mgmt.expectation_horizon)
+        nourishplan_new = np.zeros(mgmt.expectation_horizon)
+
+        # take into account nourishments already paid for
+        nourishplan_last = mgmt.nourishtime[t + 1 : t + mgmt.expectation_horizon + 1]
         nourish_times = np.arange(0, mgmt.nourish_plan_horizon, nourish_interval)
         nourishplan_new[nourish_times] = 1
-        planned_nourishment = (
-            nourishplan_last + nourishplan_new
-        )  # z question to self: does this account for overlapping nourishments - does this get assigned 2's ever?
+        planned_nourishment = nourishplan_last + nourishplan_new
+        # z question to self: does this account for overlapping nourishments - does this get assigned 2's ever?
+        if np.any(planned_nourishment == 2):
+            print("This can't happen -- overlapping nourishments")
     else:
-        nourishplan_last = mgmt.nourishtime[t + 1 : t + t_horiz + 1]
+        nourishplan_last = mgmt.nourishtime[t + 1 : t + mgmt.expectation_horizon + 1]
         bw_future[0] = mgmt.bw[t] - agentsame.E_ER[t]
         nourish_xshore = []
         nourish_times = []
         planned_nourishment = nourishplan_last
 
-    for time in range(1, t_horiz):
-        if planned_nourishment[time] == 1:  # if planned_nourishment[time] > 0:
+    for time in range(1, mgmt.expectation_horizon):
+        if planned_nourishment[time] == 1:  # i.e., a nourishment year
             bw_future[time] = mgmt.x0
             nourish_xshore[time] = mgmt.x0 - (bw_future[time - 1] - agentsame.E_ER[t])
         else:
@@ -77,7 +84,9 @@ def calculate_nourishment_plan_cost(
     time_index, agentsame, mgmt, modelforcing, agent_of, agent_nof
 ):
     """
-
+    With each of the beach intervals evaluated using `evaluate_nourishment_future_beach_width`, we get expectations from
+    the agents about mean beach width. This function then calculates the cost of each of those different nourishment
+    plans.
 
     :param time_index: the time index
     :param agentsame: class with variables that are the same between both sets of agents (ocean front and non-OF)
@@ -88,75 +97,84 @@ def calculate_nourishment_plan_cost(
 
     """
 
+    # save local variables with better names
     t = time_index
     alongshore_barrier_length = mgmt.lLength
     shoreface_depth = mgmt.Ddepth
     fixed_cost_bulldoze = (
         mgmt.fixedcost_beach
     )  # fixed cost ass. with nourishment (permits, bulldozer, you name it)
-    delta = mgmt.delta_disc  # KA: left off here
-    amort = mgmt.amort
-    barrier_height_msl = modelforcing.barr_height[
-        t
-    ]  # has already been updated this time step for SLR
+    discount_rate = (
+        mgmt.delta_disc
+    )  # discount rate (i.e., money now is worth more than in the future)
+    amortization_period = mgmt.amort  # amortization time period (loan pay back period)
 
+    # zero earlier variables
     mgmt.nourishment_menu_volumes = 0 * mgmt.nourishment_menu_volumes
     mgmt.nourishment_menu_bw = 0 * mgmt.nourishment_menu_bw
     mgmt.nourishment_menu_taxburden = 0 * mgmt.nourishment_menu_taxburden
     mgmt.nourishment_pricelist = 0 * mgmt.nourishment_pricelist
 
-    # calculate costs and tax rate for various nourishment intervals for nourishing every 1 - 10 years
-    # index describes nourishing every (nourishment interval + 1) years the case of no nourishment is
-    #  indexed as nourishment interval = 10 (+1)
-    for nourish_interval in range(0, mgmt.nourish_plan_horizon + 1):
+    # NOTE:there is a feature here in the Matlab version that Zack needs to look at and figure out if we want to include
 
-        i = nourish_interval
+    # calculate costs and tax rate for various nourishment intervals for nourishing every 1 - 10 years;
+    # index describes nourishing every (nourishment interval + 1) years; the case of no nourishment is
+    # indexed as nourishment interval = 10 (+1)
+    for i_nourish in range(0, mgmt.nourish_plan_horizon + 1):
+
         [
-            nourish_xshore,
-            nourish_yr,
-            mean_beach_width,
-        ] = evaluate_nourishment_future_beach_width(time_index, mgmt, agentsame, i + 1)
+            nourish_xshore,  # [here m, later m^3]
+            nourish_yr,  # years that nourishment will occur
+            mean_beach_width,  # [m]
+        ] = evaluate_nourishment_future_beach_width(
+            time_index, mgmt, agentsame, i_nourish + 1
+        )  # +1 b/c we start at 0
 
-        if nourish_interval < mgmt.nourish_plan_horizon:
-            nourish_yr = nourish_yr + 1
-            fcost = fixed_cost_bulldoze / ((1 + delta) ** nourish_yr)
-            namount = alongshore_barrier_length * (
-                nourish_xshore * (2 * barrier_height_msl + shoreface_depth) / 2
+        if i_nourish < mgmt.nourish_plan_horizon:
+
+            nourish_yr = (
+                nourish_yr + 1
+            )  # add 1 to account for python index starting at 0
+            fixed_cost = fixed_cost_bulldoze / ((1 + discount_rate) ** nourish_yr)
+            nourish_amount = alongshore_barrier_length * (
+                nourish_xshore * (2 * modelforcing.barr_height[t] + shoreface_depth) / 2
             )
-            varcost = (mgmt.sandcost * namount) / ((1 + delta) ** nourish_yr)
-            mgmt.nourishment_menu_volumes[i, nourish_yr] = namount
-            mgmt.nourishment_menu_cost[i] = (1 - mgmt.nourish_subsidy) * (
-                np.sum(fcost) + np.sum(varcost)
+            varcost = (mgmt.sandcost * nourish_amount) / (
+                (1 + discount_rate) ** nourish_yr
             )
-            mgmt.nourishment_menu_bw[i] = mean_beach_width
-            mgmt.nourishment_menu_totalcostperyear[i] = (
-                mgmt.nourishment_menu_cost[i]
-                * delta
-                * (1 + delta) ** amort
-                / ((1 + delta) ** amort - 1)
+            mgmt.nourishment_menu_volumes[i_nourish, nourish_yr] = nourish_amount
+            mgmt.nourishment_menu_cost[i_nourish] = (1 - mgmt.nourish_subsidy) * (
+                np.sum(fixed_cost) + np.sum(varcost)
+            )
+            mgmt.nourishment_menu_bw[i_nourish] = mean_beach_width
+            mgmt.nourishment_menu_totalcostperyear[i_nourish] = (
+                mgmt.nourishment_menu_cost[i_nourish]
+                * discount_rate
+                * (1 + discount_rate) ** amortization_period
+                / ((1 + discount_rate) ** amortization_period - 1)
             )
         else:
-            mgmt.nourishment_menu_cost[i] = 0
-            mgmt.nourishment_menu_bw[i] = mean_beach_width
-            mgmt.nourishment_menu_totalcostperyear[i] = 0
+            mgmt.nourishment_menu_cost[i_nourish] = 0
+            mgmt.nourishment_menu_bw[i_nourish] = mean_beach_width
+            mgmt.nourishment_menu_totalcostperyear[i_nourish] = 0
 
     for i in range(0, mgmt.nourish_plan_horizon + 1):
-        if mgmt.nourishment_menu_totalcostperyear[i] < 0:
-            mgmt.nourishment_menu_totalcostperyear[i] = 0
-        mgmt.nourishment_menu_add_tax[i] = (
-            amort
-            * mgmt.nourishment_menu_totalcostperyear[i]
+        if mgmt.nourishment_menu_totalcostperyear[i_nourish] < 0:
+            mgmt.nourishment_menu_totalcostperyear[i_nourish] = 0
+        mgmt.nourishment_menu_add_tax[i_nourish] = (
+            amortization_period
+            * mgmt.nourishment_menu_totalcostperyear[i_nourish]
             / np.sum(
                 mgmt.taxratio_OF * agentsame.I_OF * agent_of.price[t - 1]
                 + (1 - agentsame.I_OF) * agent_nof.price[t - 1]
             )
         )
-        mgmt.nourishment_menu_taxburden[:, i] = amort * (
-            mgmt.nourishment_menu_add_tax[i]
+        mgmt.nourishment_menu_taxburden[:, i_nourish] = amortization_period * (
+            mgmt.nourishment_menu_add_tax[i_nourish]
             * (1 - agentsame.I_OF)
             * agent_nof.price[t - 1]
             + mgmt.taxratio_OF
-            * mgmt.nourishment_menu_add_tax[i]
+            * mgmt.nourishment_menu_add_tax[i_nourish]
             * agentsame.I_OF
             * agent_of.price[t - 1]
         )
