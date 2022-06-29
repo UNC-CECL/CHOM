@@ -55,12 +55,20 @@ class ModelParameters:
         self._Tfinal = value
 
     @property
-    def barr_elev(self):
-        return self._barr_elev
+    def barr_height(self):
+        return self._barr_height
 
-    @barr_elev.setter
-    def barr_elev(self, value):
-        self._barr_elev = value
+    @barr_height.setter
+    def barr_height(self, value):
+        self._barr_height = value
+
+    @property
+    def mean_sea_level(self):
+        return self._mean_sea_level
+
+    @mean_sea_level.setter
+    def mean_sea_level(self, value):
+        self._mean_sea_level = value
 
 
 class ManagementParameters:
